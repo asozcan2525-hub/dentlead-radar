@@ -92,6 +92,10 @@ app.post('/api/scan', async (req, res) => {
 // 5. Ayarları Getir
 app.get('/api/config', (req, res) => {
   const config = loadConfig();
+  if (!config.api_keys) config.api_keys = {};
+  if (process.env.GEMINI_API_KEY && !config.api_keys.gemini_api_key) {
+    config.api_keys.gemini_api_key = process.env.GEMINI_API_KEY;
+  }
   res.json({ success: true, config });
 });
 
@@ -99,6 +103,13 @@ app.get('/api/config', (req, res) => {
 app.post('/api/config', (req, res) => {
   try {
     const newConfig = req.body;
+    if (newConfig.api_keys?.gemini_api_key) {
+      process.env.GEMINI_API_KEY = newConfig.api_keys.gemini_api_key;
+      try {
+        const envContent = `PORT=${process.env.PORT || 3000}\nGEMINI_API_KEY=${newConfig.api_keys.gemini_api_key}\n`;
+        fs.writeFileSync(path.join(__dirname, '../.env'), envContent, 'utf8');
+      } catch (_) {}
+    }
     saveConfig(newConfig);
     res.json({ success: true, message: 'Ayarlar başarıyla kaydedildi' });
   } catch (err) {

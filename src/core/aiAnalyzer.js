@@ -198,36 +198,52 @@ const aiAnalyzer = {
    * Gemini API ile DACH Sağlık Turizmi Analizi
    */
   async callGemini(apiKey, text, category, urgency, location, lang) {
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    // Gemini Flash en son sürüm (gemini-flash-latest / gemini-3.6-flash)
+    const models = ['gemini-flash-latest', 'gemini-3.6-flash'];
     const prompt = `Du bist ein erfahrener zahnmedizinischer Patientenberater für Gesundheitstourismus in einer renommierten Zahnklinik in Istanbul.
 Analysiere folgenden Text aus einem deutschen Forum / Social Media:
 
-TEXT: "${text}"
+TEXT: "${text.replace(/"/g, '\\"')}"
 
-Antworte AUSSCHLIESSLICH mit einem validen JSON-Objekt:
+Antworte AUSSCHLIESSLICH mit einem validen JSON-Objekt (kein Markdown, kein weiterer Text):
 {
-  "is_lead": true/false,
-  "treatment_category": "implant" | "zirconium_aesthetic" | "orthodontics_invisalign" | "toothache_emergency" | "root_canal" | "wisdom_tooth" | "general_checkup",
-  "urgency": "critical" | "high" | "medium" | "low",
+  "is_lead": true,
+  "treatment_category": "implant",
+  "urgency": "high",
   "location": "Almanya / Avusturya / Schweiz Stadt oder Land",
   "sentiment": "Interesse an Zahnbehandlung Ausland / Kostenvergleich",
-  "ai_score": 1-100 (wie kaufkräftig und abschlussbereit ist der Patient?),
-  "suggested_reply": "Eine hochprofessionelle, vertrauensbildende, empathische Antwort auf Deutsch (3-4 Sätze), die auf Heil- und Kostenplan, deutschsprachige Betreuung, VIP-Transfer und kostenlose Röntgen-Erstberatung hinweist."
+  "ai_score": 90,
+  "suggested_reply": "Eine hochprofessionelle, vertrauensbildende Antwort auf Deutsch (3-4 Sätze)."
 }`;
 
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }]
-      })
-    });
+    for (const model of models) {
+      try {
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }]
+          })
+        });
 
-    if (!response.ok) throw new Error(`Gemini API HTTP ${response.status}`);
-    const data = await response.json();
-    const rawAnswer = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    const cleanJson = rawAnswer.replace(/```json/g, '').replace(/```/g, '').trim();
-    return JSON.parse(cleanJson);
+        if (!response.ok) {
+          const errBody = await response.text();
+          console.warn(`Gemini (${model}) başarısız: HTTP ${response.status} - ${errBody.slice(0, 100)}`);
+          continue;
+        }
+
+        const data = await response.json();
+        const rawAnswer = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        const match = rawAnswer.match(/\{[\s\S]*\}/);
+        if (match) {
+          return JSON.parse(match[0]);
+        }
+      } catch (err) {
+        console.warn(`Gemini (${model}) çağrısında hata:`, err.message);
+      }
+    }
+    return null;
   }
 };
 
