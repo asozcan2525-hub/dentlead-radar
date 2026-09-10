@@ -198,8 +198,8 @@ const aiAnalyzer = {
    * Gemini API ile DACH Sağlık Turizmi Analizi
    */
   async callGemini(apiKey, text, category, urgency, location, lang) {
-    // Gemini Flash en son sürüm (gemini-flash-latest / gemini-3.6-flash)
-    const models = ['gemini-flash-latest', 'gemini-3.6-flash'];
+    // Gemini 3.6 Flash (ultra-hızlı) ve Flash-Latest
+    const models = ['gemini-3.6-flash', 'gemini-flash-latest'];
     const prompt = `Du bist ein erfahrener zahnmedizinischer Patientenberater für Gesundheitstourismus in einer renommierten Zahnklinik in Istanbul.
 Analysiere folgenden Text aus einem deutschen Forum / Social Media:
 
