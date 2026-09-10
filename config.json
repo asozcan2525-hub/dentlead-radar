@@ -1,0 +1,49 @@
+{
+  "clinic": {
+    "name": "DentArt Istanbul International Clinic",
+    "city": "İstanbul",
+    "phone": "+90 555 000 00 00",
+    "german_desk": "+49 30 0000000",
+    "website": "https://example-dental-tourism.com"
+  },
+  "targeting": {
+    "health_tourism": true,
+    "primary_language": "de",
+    "target_countries": ["Almanya 🇩🇪", "Avusturya 🇦🇹", "İsviçre 🇨🇭"],
+    "target_cities": ["München", "Berlin", "Wien", "Zürich", "Köln", "Frankfurt", "Hamburg", "Graz"],
+    "categories": [
+      "implant",
+      "zirconium_aesthetic",
+      "orthodontics_invisalign",
+      "toothache_emergency",
+      "root_canal",
+      "wisdom_tooth"
+    ]
+  },
+  "api_keys": {
+    "gemini_api_key": "",
+    "openai_api_key": "",
+    "rapidapi_key": "",
+    "twitter_bearer_token": "",
+    "reddit_client_id": "",
+    "reddit_client_secret": "",
+    "reddit_user_agent": "DentLeadRadar/2.0 (German Market)",
+    "serpapi_key": "",
+    "youtube_api_key": ""
+  },
+  "notifications": {
+    "telegram": {
+      "enabled": false,
+      "bot_token": "",
+      "chat_id": ""
+    },
+    "sheets_webhook": {
+      "enabled": false,
+      "url": ""
+    }
+  },
+  "scanner": {
+    "auto_scan_interval_minutes": 15,
+    "min_lead_score": 60
+  }
+}

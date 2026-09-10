@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: dentlead-radar
+    runtime: node
+    region: frankfurt # Almanya lokasyonu - DACH veri çekme için en iyisi
+    plan: free
+    buildCommand: npm install
+    startCommand: node src/server.js
+    envVars:
+      - key: PORT
+        value: 3000
