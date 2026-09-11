@@ -64,12 +64,6 @@ const scannerService = {
         ...youtubeItems
       ];
 
-      // Eğer canlı kaynaklar henüz az veri verdiyse veya simülasyon istenmişse
-      if (options.includeSimulation || allRawItems.length === 0) {
-        const simSamples = simulationFeed.getAllSamples();
-        allRawItems = [...allRawItems, ...simSamples];
-      }
-
       totalDiscovered = allRawItems.length;
 
       // 2. Her gönderiyi incele ve AI Niyet Analizinden geçir (en taze 10 adayı tara)

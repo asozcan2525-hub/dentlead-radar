@@ -162,12 +162,12 @@ app.get('/api/export/csv', (req, res) => {
   }
 });
 
-// İlk çalıştırmada veritabanı boşsa örnek simülasyon lead'lerini yükle
+// İlk çalıştırmada veritabanı boşsa canlı gerçek verileri tara
 const initialStats = database.getStats();
 if (initialStats.totalLeads === 0) {
-  console.log('📦 Veritabanı başlatılıyor, başlangıç verileri taranıyor...');
-  scannerService.runFullScan({ includeSimulation: true }).then(() => {
-    console.log('✅ Başlangıç verileri başarıyla yüklendi.');
+  console.log('📦 Veritabanı başlatılıyor, canlı DACH verileri taranıyor...');
+  scannerService.runFullScan({ includeSimulation: false }).then(() => {
+    console.log('✅ Canlı DACH verileri başarıyla yüklendi.');
   });
 }
 
