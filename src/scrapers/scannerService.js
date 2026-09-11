@@ -72,12 +72,12 @@ const scannerService = {
 
       totalDiscovered = allRawItems.length;
 
-      // 2. Her gönderiyi incele ve AI Niyet Analizinden geçir
-      for (const item of allRawItems) {
-        if (database.isDuplicate(item.source, item.source_id)) {
-          continue;
-        }
+      // 2. Her gönderiyi incele ve AI Niyet Analizinden geçir (en taze 10 adayı tara)
+      const candidateItems = allRawItems
+        .filter(item => !database.isDuplicate(item.source, item.source_id))
+        .slice(0, 10);
 
+      for (const item of candidateItems) {
         const analysis = await aiAnalyzer.analyze(item.content, {
           author: item.author,
           location: item.location
