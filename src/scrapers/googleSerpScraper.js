@@ -19,6 +19,8 @@ function getConfig() {
   return {};
 }
 
+const { parseRelativeDate } = require('../core/dateUtils');
+
 const googleSerpScraper = {
   async scan() {
     const config = getConfig();
@@ -29,16 +31,24 @@ const googleSerpScraper = {
       return rawItems;
     }
 
-    // Hedef DACH arama sorguları (Gutefrage ve Alman forumları)
+    // 🎯 Son 90 gün (3 Ay) Tarih Aralığı Hesabı (Google cdr formatı: MM/DD/YYYY)
+    const now = new Date();
+    const ninetyDaysAgo = new Date(Date.now() - 90 * 86400000);
+    const formatDate = (d) => `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`;
+    const cdrParam = `cdr:1,cd_min:${formatDate(ninetyDaysAgo)},cd_max:${formatDate(now)}`;
+
+    // Hedef DACH arama sorguları
     const queries = [
       'Zahnimplantat Türkei Erfahrungen site:gutefrage.net',
-      'Zahnersatz Ausland Kosten site:gutefrage.net'
+      'Zahnersatz Ausland Kosten Erfahrungen',
+      'Zahnklinik Istanbul Erfahrungen site:gutefrage.net'
     ];
 
     for (const qText of queries) {
       try {
         const query = encodeURIComponent(qText);
-        const url = `https://serpapi.com/search.json?q=${query}&engine=google&gl=de&hl=de&num=5&api_key=${serpApiKey}`;
+        // tbs ile Google'a SADECE son 3 ayın (90 gün) sonuçlarını getirme emri veriyoruz
+        const url = `https://serpapi.com/search.json?q=${query}&engine=google&gl=de&hl=de&tbs=${cdrParam}&num=10&api_key=${serpApiKey}`;
 
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 12000);
@@ -51,6 +61,22 @@ const googleSerpScraper = {
           const results = data.organic_results || [];
 
           for (const item of results) {
+            // 🎯 1. SERP Tarih Kontrolü
+            const dateParsed = parseRelativeDate(item.date);
+            if (dateParsed && !dateParsed.valid) {
+              // 3 aydan veya yıldan eski içerik kesinlikle elenir!
+              continue;
+            }
+
+            // 🎯 2. Snippet/Başlık İçinde Eski Yıl Kontrolü (2015-2025 tarihli eski blog/soruları yakala)
+            const combinedText = `${item.title || ''} ${item.snippet || ''}`;
+            const oldYearRegex = /\b(201[5-9]|202[0-5])\b/;
+            if (oldYearRegex.test(combinedText) && !combinedText.includes('2026')) {
+              continue; // Eski yıldan kalma konu
+            }
+
+            const finalDate = (dateParsed && dateParsed.date) ? dateParsed.date : new Date().toISOString();
+
             rawItems.push({
               source: 'forum',
               source_id: `serp_${item.position || Math.random().toString(36).substring(7)}_${Buffer.from(item.link || '').toString('base64').slice(-8)}`,
@@ -58,7 +84,7 @@ const googleSerpScraper = {
               author_url: item.link,
               url: item.link,
               content: `${item.title}: ${item.snippet || ''}`,
-              created_at: new Date().toISOString(),
+              created_at: finalDate,
               location: 'Almanya 🇩🇪'
             });
           }
