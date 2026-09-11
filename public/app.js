@@ -330,15 +330,27 @@ function createLeadCardHtml(lead) {
           </button>
         </div>
 
-        <a href="${lead.url || '#'}" target="_blank" class="btn-link-out">
-          Gönderiye Git &rarr;
-        </a>
+        <div class="action-links-group" style="display: flex; gap: 8px; align-items: center;">
+          ${lead.author_url && lead.author_url !== '#' && lead.author_url !== lead.url ? `
+            <a href="${escapeHtml(lead.author_url)}" target="_blank" rel="noopener noreferrer" class="btn-link-author" 
+               style="display: inline-flex; align-items: center; gap: 5px; padding: 8px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; color: #38bdf8; background: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.3); text-decoration: none; transition: all 0.2s;"
+               title="Hastanın kullanıcı profiline git / Özel mesaj (DM) gönder">
+              👤 Profili & DM
+            </a>
+          ` : ''}
+
+          <a href="${escapeHtml(lead.url || '#')}" target="_blank" rel="noopener noreferrer" class="btn-link-out"
+             style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; text-decoration: none;"
+             title="Orijinal soru başlığına git ve hazırlanan Almanca klinik teklifini yapıştır">
+            💬 Soruya Git & Yanıtla &rarr;
+          </a>
+        </div>
       </div>
     </div>
   `;
 }
 
-// 4. Canlı DACH Tarama Tetikle
+// 4. Canlı DACH Tarama Tetikle (Gerçek Kaynaklar)
 async function triggerScan() {
   scanIcon.classList.add('spinning');
   scanBtnText.textContent = 'DACH Taranıyor...';
@@ -350,7 +362,7 @@ async function triggerScan() {
     const res = await fetch('/api/scan', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ includeSimulation: true })
+      body: JSON.stringify({ includeSimulation: false })
     });
 
     const data = await res.json();
