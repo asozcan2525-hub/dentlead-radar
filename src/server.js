@@ -38,7 +38,7 @@ app.get('/ping', (req, res) => {
   res.json({ status: 'ok', message: 'DentLead Radar 7/24 Aktif', uptime: process.uptime() });
 });
 
-// 1. Lead'leri Listele (Filtreleme Destekli)
+// 1. Lead'leri Listele (Filtreleme & 3 Ay Tazelik Destekli)
 app.get('/api/leads', (req, res) => {
   try {
     const filters = {
@@ -46,6 +46,7 @@ app.get('/api/leads', (req, res) => {
       urgency: req.query.urgency || 'all',
       status: req.query.status || 'all',
       source: req.query.source || 'all',
+      timeRange: req.query.timeRange || '90d',
       limit: parseInt(req.query.limit) || 100,
       offset: parseInt(req.query.offset) || 0
     };

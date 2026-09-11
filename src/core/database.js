@@ -54,6 +54,19 @@ const database = {
       return null;
     }
 
+    const createdAt = data.created_at || new Date().toISOString();
+
+    // 🎯 SIKI TAZELİK KONTROLÜ (Maksimum 90 Gün / 3 Ay)
+    // 3 aydan eski hiçbir forum veya sosyal medya gönderisi sisteme ALINMAZ!
+    const postTime = new Date(createdAt).getTime();
+    if (!isNaN(postTime)) {
+      const ninetyDaysMs = 90 * 24 * 60 * 60 * 1000;
+      if (Date.now() - postTime > ninetyDaysMs) {
+        // 90 günden eski olduğu için reddedildi
+        return null;
+      }
+    }
+
     const stmt = db.prepare(`
       INSERT INTO leads (
         source, source_id, author, author_url, url, content, 
@@ -62,7 +75,6 @@ const database = {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
-    const createdAt = data.created_at || new Date().toISOString();
     const result = stmt.run(
       data.source || 'web',
       data.source_id || `lead_${Date.now()}_${Math.random().toString(36).substring(7)}`,
@@ -83,10 +95,20 @@ const database = {
     return { id: result.lastInsertRowid, ...data, created_at: createdAt };
   },
 
-  // Filtreli lead listesi getir
+  // Filtreli lead listesi getir (Tazelik filtresi destekli)
   getLeads(filters = {}) {
     let query = 'SELECT * FROM leads WHERE 1=1';
     const params = [];
+
+    // Zaman filtresi: 7 gün, 30 gün veya varsayılan en fazla 90 gün (3 ay)
+    let maxDays = 90;
+    if (filters.timeRange === '7d') maxDays = 7;
+    else if (filters.timeRange === '30d') maxDays = 30;
+    else if (filters.timeRange === '90d' || !filters.timeRange) maxDays = 90;
+
+    const minDateIso = new Date(Date.now() - maxDays * 24 * 60 * 60 * 1000).toISOString();
+    query += ' AND created_at >= ?';
+    params.push(minDateIso);
 
     if (filters.category && filters.category !== 'all') {
       query += ' AND treatment_category = ?';
@@ -105,11 +127,18 @@ const database = {
       params.push(filters.source);
     }
 
-    query += ' ORDER BY id DESC LIMIT ? OFFSET ?';
+    query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
     params.push(filters.limit || 100, filters.offset || 0);
 
     const stmt = db.prepare(query);
     return stmt.all(...params);
+  },
+
+  // 90 günden eski kalıntıları temizle
+  purgeOldLeads(days = 90) {
+    const minDateIso = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+    const stmt = db.prepare('DELETE FROM leads WHERE created_at < ?');
+    return stmt.run(minDateIso);
   },
 
   // Lead durumunu güncelle (new, contacted, appointment, ignored)

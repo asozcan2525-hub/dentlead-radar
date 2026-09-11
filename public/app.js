@@ -10,6 +10,7 @@ let state = {
     source: 'all',
     status: 'all',
     location: 'all',
+    timeRange: '90d',
     search: ''
   },
   stats: {},
@@ -27,6 +28,7 @@ const searchInput = document.getElementById('search-input');
 const filterLocation = document.getElementById('filter-location');
 const filterSource = document.getElementById('filter-source');
 const filterStatus = document.getElementById('filter-status');
+const filterTime = document.getElementById('filter-time');
 const btnTriggerScan = document.getElementById('btn-trigger-scan');
 const scanIcon = document.getElementById('scan-icon');
 const scanBtnText = document.getElementById('scan-btn-text');
@@ -81,6 +83,14 @@ function initEventListeners() {
     });
   }
 
+  // 🎯 Son 3 Ay Tazelik Filtresi
+  if (filterTime) {
+    filterTime.addEventListener('change', (e) => {
+      state.filters.timeRange = e.target.value;
+      fetchLeads();
+    });
+  }
+
   // Arama Girişi
   let searchTimeout;
   searchInput.addEventListener('input', (e) => {
@@ -128,7 +138,8 @@ async function fetchLeads() {
       category: state.filters.category,
       urgency: state.filters.urgency,
       source: state.filters.source,
-      status: state.filters.status
+      status: state.filters.status,
+      timeRange: state.filters.timeRange || '90d'
     });
 
     const res = await fetch(`/api/leads?${params.toString()}`);
@@ -271,6 +282,14 @@ function createLeadCardHtml(lead) {
       </div>
 
       <div class="card-tags">
+        <!-- 🎯 3 Ay Tazelik Rozeti -->
+        ${(() => {
+          const postTime = new Date(lead.created_at).getTime();
+          const diffDays = Math.max(0, Math.floor((Date.now() - postTime) / (1000 * 60 * 60 * 24)));
+          if (diffDays <= 7) return `<span class="tag-item" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3);">🟢 Son 7 Gün (Çok Sıcak)</span>`;
+          if (diffDays <= 30) return `<span class="tag-item" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3);">🟡 Son 30 Gün (Aktif)</span>`;
+          return `<span class="tag-item" style="background: rgba(14, 165, 233, 0.15); color: #38bdf8; border: 1px solid rgba(14, 165, 233, 0.3);">🔵 Son 3 Ay (Güncel)</span>`;
+        })()}
         <span class="tag-item tag-treatment">
           ${treatmentNames[lead.treatment_category] || lead.treatment_category}
         </span>
@@ -508,6 +527,7 @@ function resetFilters() {
   if (filterLocation) filterLocation.value = 'all';
   if (filterSource) filterSource.value = 'all';
   if (filterStatus) filterStatus.value = 'all';
+  if (filterTime) filterTime.value = '90d';
   document.querySelectorAll('#category-filter-pills .pill').forEach(p => p.classList.remove('active'));
   document.querySelector('#category-filter-pills .pill[data-category="all"]').classList.add('active');
   fetchLeads();

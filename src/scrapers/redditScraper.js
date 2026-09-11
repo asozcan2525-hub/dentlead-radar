@@ -36,6 +36,12 @@ const redditScraper = {
             const post = item.data;
             if (!post) continue;
 
+            // 🎯 3 Aydan (90 gün) eski gönderileri kesinlikle alma
+            const ninetyDaysMs = 90 * 24 * 60 * 60 * 1000;
+            if (Date.now() - (post.created_utc * 1000) > ninetyDaysMs) {
+              continue; // 3 aydan eski gönderi elendi
+            }
+
             const fullContent = `${post.title || ''}\n${post.selftext || ''}`.trim();
             if (fullContent.length < 20) continue;
 
