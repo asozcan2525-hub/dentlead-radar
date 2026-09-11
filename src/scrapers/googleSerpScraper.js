@@ -3,6 +3,7 @@
  * SerpApi ile Google Germany (gl=de, hl=de) ve Gutefrage.net/Med1 tartışmalarını canlı çeker.
  */
 
+require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 
@@ -28,18 +29,23 @@ const googleSerpScraper = {
       return rawItems;
     }
 
-    // Hedef DACH arama sorguları
+    // Hedef DACH arama sorguları (Gutefrage ve Alman forumları)
     const queries = [
-      '(Zahnimplantat OR Zahnersatz OR Zahnklinik) (Türkei OR Istanbul) site:gutefrage.net',
-      '(Zahnbehandlung OR Zahnimplantate) Ausland Erfahrungen site:gutefrage.net'
+      'Zahnimplantat Türkei Erfahrungen site:gutefrage.net',
+      'Zahnersatz Ausland Kosten site:gutefrage.net'
     ];
 
     for (const qText of queries) {
       try {
         const query = encodeURIComponent(qText);
-        const url = `https://serpapi.com/search.json?q=${query}&engine=google&gl=de&hl=de&num=10&api_key=${serpApiKey}`;
+        const url = `https://serpapi.com/search.json?q=${query}&engine=google&gl=de&hl=de&num=5&api_key=${serpApiKey}`;
 
-        const res = await fetch(url);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 12000);
+
+        const res = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeoutId);
+
         if (res.ok) {
           const data = await res.json();
           const results = data.organic_results || [];
