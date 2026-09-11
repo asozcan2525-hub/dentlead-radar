@@ -37,18 +37,23 @@ const googleSerpScraper = {
     const formatDate = (d) => `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`;
     const cdrParam = `cdr:1,cd_min:${formatDate(ninetyDaysAgo)},cd_max:${formatDate(now)}`;
 
-    // Hedef DACH arama sorguları
+    // Hedef DACH ve Avrupa doğrudan hasta arama sorguları
     const queries = [
-      'Zahnimplantat Türkei Erfahrungen site:gutefrage.net',
-      'Zahnersatz Ausland Kosten Erfahrungen',
-      'Zahnklinik Istanbul Erfahrungen site:gutefrage.net'
+      'site:reddit.com/r/FragReddit Zahnarzt Ausland OR Kosten',
+      'site:reddit.com/r/Austria Zahnarzt Ausland OR Türkei',
+      'site:reddit.com/r/askdentists Turkey teeth implants',
+      'site:reddit.com/r/de Zahnarzt teuer Kosten'
+    ];
+
+    const promoterKeywords = [
+      'deinzahnteam', 'prof.dr.', 'dr. med.', 'unsere praxis', 'unser team', 'wir bieten',
+      'termin vereinbaren', 'jetzt unverbindlich', 'qualit\u00e4t vor preis'
     ];
 
     for (const qText of queries) {
       try {
         const query = encodeURIComponent(qText);
-        // tbs ile Google'a SADECE son 3 ayın (90 gün) sonuçlarını getirme emri veriyoruz
-        const url = `https://serpapi.com/search.json?q=${query}&engine=google&gl=de&hl=de&tbs=${cdrParam}&num=10&api_key=${serpApiKey}`;
+        const url = `https://serpapi.com/search.json?q=${query}&engine=google&gl=de&hl=de&num=10&api_key=${serpApiKey}`;
 
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 12000);
@@ -61,31 +66,42 @@ const googleSerpScraper = {
           const results = data.organic_results || [];
 
           for (const item of results) {
-            // 🎯 1. SERP Tarih Kontrolü
-            const dateParsed = parseRelativeDate(item.date);
-            if (dateParsed && !dateParsed.valid) {
-              // 3 aydan veya yıldan eski içerik kesinlikle elenir!
-              continue;
-            }
+            // Sadece Reddit veya soru bağlantıları
+            if (!item.link || !item.link.includes('reddit.com/r/')) continue;
 
-            // 🎯 2. Snippet/Başlık İçinde Eski Yıl Kontrolü (2015-2025 tarihli eski blog/soruları yakala)
-            const combinedText = `${item.title || ''} ${item.snippet || ''}`;
-            const oldYearRegex = /\b(201[5-9]|202[0-5])\b/;
-            if (oldYearRegex.test(combinedText) && !combinedText.includes('2026')) {
-              continue; // Eski yıldan kalma konu
-            }
+            const combinedText = `${item.title || ''} ${item.snippet || ''}`.toLowerCase();
 
-            const finalDate = (dateParsed && dateParsed.date) ? dateParsed.date : new Date().toISOString();
+            // 🛑 1. Reklamcı / Klinik / Tanıtıcı Kontrolü
+            let isPromoter = false;
+            for (const pk of promoterKeywords) {
+              if (combinedText.includes(pk)) {
+                isPromoter = true;
+                break;
+              }
+            }
+            if (isPromoter) continue;
+
+            // 🎯 2. Gerçek Hasta İfadesi Kontrolü (1. Tekil Şahıs)
+            const hasPatientSignal = (
+              combinedText.includes('ich') || combinedText.includes('mein') || 
+              combinedText.includes('mir') || combinedText.includes('brauche') || 
+              combinedText.includes('my') || combinedText.includes('i need') || 
+              combinedText.includes('mother') || combinedText.includes('all on') || 
+              combinedText.includes('kosten') || combinedText.includes('quote')
+            );
+            if (!hasPatientSignal) continue;
+
+            const finalDate = new Date().toISOString();
 
             rawItems.push({
-              source: 'forum',
+              source: 'reddit',
               source_id: `serp_${item.position || Math.random().toString(36).substring(7)}_${Buffer.from(item.link || '').toString('base64').slice(-8)}`,
-              author: 'Gutefrage / DACH Forum',
+              author: 'Reddit Patient',
               author_url: item.link,
               url: item.link,
               content: `${item.title}: ${item.snippet || ''}`,
               created_at: finalDate,
-              location: 'Almanya 🇩🇪'
+              location: item.link.includes('/r/Austria') ? 'Avusturya 🇦🇹' : 'Almanya 🇩🇪'
             });
           }
         }

@@ -56,6 +56,12 @@
     </div>
 
     <div class="header-right">
+      <button id="btn-open-email-modal" class="btn btn-email-special" title="E-Postası Bulunan Hastaları Ayrı Pencerede Gör">
+        <span class="email-badge-dot"></span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22 6 12 13 2 6"/></svg>
+        <span>📧 Mailleri Bulunanlar (<span id="header-email-count">0</span>)</span>
+      </button>
+
       <button id="btn-export-csv" class="btn btn-secondary">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         <span>Excel / CSV</span>
@@ -118,6 +124,17 @@
           <span class="stat-label">İletişime Geçilen</span>
           <h3 id="stat-contacted" class="stat-value">0</h3>
           <span class="stat-hint text-purple">Teklif / HKP gönderildi</span>
+        </div>
+      </div>
+
+      <div class="stat-card glass-panel stat-card-email-highlight" id="card-email-leads" title="Tıkla ve Mailleri Bulunanları Ayrı Pencerede Gör">
+        <div class="stat-icon-wrap icon-email-glow">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        </div>
+        <div class="stat-info">
+          <span class="stat-label">📧 Mailleri Bulunanlar</span>
+          <h3 id="stat-emails" class="stat-value">0</h3>
+          <span class="stat-hint text-email-accent">Ayrı Pencerede Gör ↗</span>
         </div>
       </div>
     </section>
@@ -293,6 +310,53 @@
       <div class="modal-footer">
         <button id="btn-cancel-settings" class="btn btn-secondary">Vazgeç</button>
         <button id="btn-save-settings" class="btn btn-primary">Kaydet ve Uygula</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 📧 Mailleri Bulunanlar Özel Pencere (Modal) -->
+  <div id="email-leads-modal" class="modal-overlay hidden">
+    <div class="modal-card glass-panel email-leads-modal-card">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="modal-icon email-icon-glow">📧</div>
+          <div>
+            <h3>Mailleri Bulunan Müşteri Adayları (Doğrudan İletişim Havuzu)</h3>
+            <p>Facebook grupları, ikinci görüş forumları ve hasta topluluklarında e-posta paylaşan gerçek diş hastaları.</p>
+          </div>
+        </div>
+        <div class="modal-header-actions">
+          <button id="btn-copy-all-emails" class="btn btn-secondary btn-sm" title="Tüm e-postaları panoya kopyala">
+            <span>📋 Tüm Mailleri Kopyala</span>
+          </button>
+          <button id="btn-close-email-modal" class="btn-close">&times;</button>
+        </div>
+      </div>
+
+      <div class="email-modal-toolbar">
+        <div class="search-box email-search-box">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="email-search-input" placeholder="Hasta adı, e-posta veya şikayet ile filtrele...">
+        </div>
+        <div class="email-stats-chip">
+          <span>Toplam Doğrulanmış E-Posta: <b id="email-modal-count">0</b></span>
+        </div>
+      </div>
+
+      <div class="modal-body email-leads-body">
+        <div id="email-leads-container" class="email-leads-container">
+          <div class="empty-state">
+            <div class="spinner-large"></div>
+            <p>E-postası bulunan müşteri adayları yükleniyor...</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer email-modal-footer">
+        <div class="email-footer-tip">
+          <span>💡 <b>Klinik Sunumu İpucu:</b> <i>"Tek Tıkla E-Posta Gönder"</i> butonuna bastığınızda, hastanın şikayetine özel hazırlanmış Almanca/İngilizce diş tedavisi teklif şablonu e-posta programınızda hazır olarak açılır.</span>
+        </div>
+        <button id="btn-close-email-modal-footer" class="btn btn-secondary">Kapat</button>
       </div>
     </div>
   </div>

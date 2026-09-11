@@ -47,11 +47,23 @@ app.get('/api/leads', (req, res) => {
       status: req.query.status || 'all',
       source: req.query.source || 'all',
       timeRange: req.query.timeRange || '90d',
+      sortBy: req.query.sortBy || 'clinical',
+      hasEmail: req.query.hasEmail === 'true',
       limit: parseInt(req.query.limit) || 100,
       offset: parseInt(req.query.offset) || 0
     };
     const leads = database.getLeads(filters);
     res.json({ success: true, leads });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 1.1 Sadece E-Postası Bulunan Lead'leri Getir (Özel Liste Penceresi İçin)
+app.get('/api/leads/with-email', (req, res) => {
+  try {
+    const leads = database.getEmailLeads();
+    res.json({ success: true, count: leads.length, leads });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -162,13 +174,16 @@ app.get('/api/export/csv', (req, res) => {
   }
 });
 
-// İlk çalıştırmada veritabanı boşsa canlı gerçek verileri tara
+// İlk çalıştırmada veritabanı boşsa 1.000+ hasta havuzunu otomatik yükle
 const initialStats = database.getStats();
 if (initialStats.totalLeads === 0) {
-  console.log('📦 Veritabanı başlatılıyor, canlı DACH verileri taranıyor...');
-  scannerService.runFullScan({ includeSimulation: false }).then(() => {
-    console.log('✅ Canlı DACH verileri başarıyla yüklendi.');
-  });
+  console.log('📦 Veritabanı başlatılıyor, 1.000+ klinik hasta havuzu yükleniyor...');
+  try {
+    require('../scripts/seed_1000_patients');
+    console.log('✅ 1.000+ hasta havuzu başarıyla yüklendi.');
+  } catch (e) {
+    console.error('Seed hatası:', e.message);
+  }
 }
 
 app.listen(PORT, () => {

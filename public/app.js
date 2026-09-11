@@ -42,6 +42,19 @@ const btnCancelSettings = document.getElementById('btn-cancel-settings');
 const btnSaveSettings = document.getElementById('btn-save-settings');
 const btnTestTelegram = document.getElementById('btn-test-telegram');
 
+// 📧 E-Postası Bulunanlar Modal Referansları
+const emailLeadsModal = document.getElementById('email-leads-modal');
+const btnOpenEmailModal = document.getElementById('btn-open-email-modal');
+const cardEmailLeads = document.getElementById('card-email-leads');
+const btnCloseEmailModal = document.getElementById('btn-close-email-modal');
+const btnCloseEmailModalFooter = document.getElementById('btn-close-email-modal-footer');
+const emailSearchInput = document.getElementById('email-search-input');
+const btnCopyAllEmails = document.getElementById('btn-copy-all-emails');
+const emailLeadsContainer = document.getElementById('email-leads-container');
+const emailModalCount = document.getElementById('email-modal-count');
+const headerEmailCount = document.getElementById('header-email-count');
+const statEmails = document.getElementById('stat-emails');
+
 document.addEventListener('DOMContentLoaded', () => {
   initEventListeners();
   loadConfig();
@@ -119,6 +132,22 @@ function initEventListeners() {
   btnSaveSettings.addEventListener('click', saveSettings);
   btnTestTelegram.addEventListener('click', testTelegram);
 
+  // 📧 E-Postası Bulunanlar Modal Olayları
+  if (btnOpenEmailModal) btnOpenEmailModal.addEventListener('click', openEmailModal);
+  if (cardEmailLeads) cardEmailLeads.addEventListener('click', openEmailModal);
+  if (btnCloseEmailModal) btnCloseEmailModal.addEventListener('click', closeEmailModal);
+  if (btnCloseEmailModalFooter) btnCloseEmailModalFooter.addEventListener('click', closeEmailModal);
+  if (btnCopyAllEmails) btnCopyAllEmails.addEventListener('click', copyAllEmails);
+  if (emailSearchInput) {
+    let emailSearchTimeout;
+    emailSearchInput.addEventListener('input', (e) => {
+      clearTimeout(emailSearchTimeout);
+      emailSearchTimeout = setTimeout(() => {
+        filterEmailCards(e.target.value.toLowerCase().trim());
+      }, 150);
+    });
+  }
+
   // Tab Geçişleri
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
@@ -139,7 +168,8 @@ async function fetchLeads() {
       urgency: state.filters.urgency,
       source: state.filters.source,
       status: state.filters.status,
-      timeRange: state.filters.timeRange || '90d'
+      timeRange: state.filters.timeRange || '90d',
+      limit: state.limit || 150
     });
 
     const res = await fetch(`/api/leads?${params.toString()}`);
@@ -163,19 +193,22 @@ async function fetchStats() {
 
     if (data.success && data.stats) {
       const s = data.stats;
-      statTotal.textContent = s.totalLeads || 0;
+      state.stats = s;
+      statTotal.textContent = (s.totalLeads || 0).toLocaleString();
       statContacted.textContent = s.contactedLeads || 0;
+      if (statEmails) statEmails.textContent = (s.withEmailLeads || 0).toLocaleString();
+      if (headerEmailCount) headerEmailCount.textContent = (s.withEmailLeads || 0).toLocaleString();
 
       let implantCount = 0;
       let aestheticCount = 0;
 
       (s.categories || []).forEach(c => {
-        if (c.treatment_category === 'implant') implantCount += c.count;
+        if (c.treatment_category === 'implant' || c.treatment_category === 'all_on_4_full_mouth') implantCount += c.count;
         if (c.treatment_category === 'zirconium_aesthetic') aestheticCount += c.count;
       });
 
-      statHighTicket.textContent = implantCount;
-      statUrgent.textContent = aestheticCount;
+      statHighTicket.textContent = implantCount.toLocaleString();
+      statUrgent.textContent = aestheticCount.toLocaleString();
     }
   } catch (err) {
     console.error('İstatistik hatası:', err);
@@ -203,7 +236,8 @@ function renderLeads() {
     );
   }
 
-  leadCountBadge.textContent = `${filtered.length} Fırsat`;
+  const totalCount = state.stats?.totalLeads || 1052;
+  leadCountBadge.textContent = `${filtered.length} / ${totalCount} Hasta (Klinik Ciddiyet Sıralı)`;
 
   if (filtered.length === 0) {
     leadsContainer.innerHTML = `
@@ -216,7 +250,24 @@ function renderLeads() {
     return;
   }
 
-  leadsContainer.innerHTML = filtered.map(lead => createLeadCardHtml(lead)).join('');
+  let html = filtered.map(lead => createLeadCardHtml(lead)).join('');
+
+  if (state.leads.length >= (state.limit || 150)) {
+    html += `
+      <div style="grid-column: 1 / -1; text-align: center; padding: 30px 20px;">
+        <button id="btn-load-more" class="btn btn-primary" onclick="loadMoreLeads()" style="padding: 14px 32px; font-weight: 700; font-size: 14px; box-shadow: 0 0 20px rgba(0, 242, 254, 0.4);">
+          📥 Daha Fazla Hasta Yükle (+150 Hasta)
+        </button>
+      </div>
+    `;
+  }
+
+  leadsContainer.innerHTML = html;
+}
+
+function loadMoreLeads() {
+  state.limit = (state.limit || 150) + 150;
+  fetchLeads();
 }
 
 // Lead Kartı HTML Üretici
@@ -580,4 +631,190 @@ function escapeHtml(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
+}
+
+/* ==========================================================================
+   📧 MAİLLERİ BULUNANLAR ÖZEL PENCERE FONKSİYONLARI
+   ========================================================================== */
+
+let emailLeadsCache = [];
+
+async function openEmailModal() {
+  if (!emailLeadsModal) return;
+  emailLeadsModal.classList.remove('hidden');
+  
+  if (emailLeadsContainer) {
+    emailLeadsContainer.innerHTML = `
+      <div class="empty-state" style="grid-column: 1 / -1;">
+        <div class="spinner-large"></div>
+        <p>E-postası bulunan müşteri adayları yükleniyor...</p>
+      </div>
+    `;
+  }
+
+  try {
+    const res = await fetch('/api/leads/with-email');
+    const data = await res.json();
+    if (data.success) {
+      emailLeadsCache = data.leads || [];
+      if (emailModalCount) emailModalCount.textContent = emailLeadsCache.length;
+      if (headerEmailCount) headerEmailCount.textContent = emailLeadsCache.length;
+      if (statEmails) statEmails.textContent = emailLeadsCache.length;
+      renderEmailCards(emailLeadsCache);
+    } else {
+      showToast('E-posta listesi alınamadı: ' + (data.error || ''), 'error');
+    }
+  } catch (err) {
+    console.error('Email leads fetch error:', err);
+    showToast('E-posta listesi çekilirken ağ hatası oluştu.', 'error');
+  }
+}
+
+function closeEmailModal() {
+  if (emailLeadsModal) emailLeadsModal.classList.add('hidden');
+}
+
+function filterEmailCards(query) {
+  if (!emailLeadsCache) return;
+  if (!query) {
+    renderEmailCards(emailLeadsCache);
+    return;
+  }
+  const filtered = emailLeadsCache.filter(l => {
+    const hay = `${l.author || ''} ${l.email || ''} ${l.content || ''} ${l.location || ''} ${l.treatment_category || ''}`.toLowerCase();
+    return hay.includes(query);
+  });
+  renderEmailCards(filtered);
+}
+
+function renderEmailCards(leads) {
+  if (!emailLeadsContainer) return;
+
+  if (!leads || leads.length === 0) {
+    emailLeadsContainer.innerHTML = `
+      <div class="empty-state" style="grid-column: 1 / -1;">
+        <span style="font-size: 36px;">📭</span>
+        <p>Eşleşen e-posta adresi bulunamadı.</p>
+      </div>
+    `;
+    return;
+  }
+
+  const treatmentLabels = {
+    implant: '🦷 Zahnimplantat & Sinuslift',
+    all_on_4_full_mouth: '👑 All-on-4 / All-on-6 Komplettsanierung',
+    zirconium_aesthetic: '✨ Veneers & Zirkonkronen',
+    orthodontics_invisalign: '📐 Invisalign & Aligner',
+    emergency_toothache: '🚨 Akuter Zahnschmerz & Notfall',
+    general_checkup: '🔍 Zweitmeinung & Heil- und Kostenplan'
+  };
+
+  const cardsHtml = leads.map(l => {
+    let flag = '🇩🇪';
+    if (l.location && l.location.includes('Avusturya')) flag = '🇦🇹';
+    else if (l.location && l.location.includes('İsviçre')) flag = '🇨🇭';
+    else if (l.location && (l.location.includes('İngiltere') || l.location.includes('UK'))) flag = '🇬🇧';
+
+    const cleanEmail = escapeHtml(l.email || '');
+    const cleanAuthor = escapeHtml(l.author || 'Hasta');
+    const initial = (cleanAuthor[0] || 'P').toUpperCase();
+    const cleanContent = escapeHtml(l.content || '');
+    const cleanUrl = escapeHtml(l.url || '#');
+    const cleanCategory = treatmentLabels[l.treatment_category] || l.treatment_category;
+
+    // Tek tıkla Almanca e-posta şablonu (mailto)
+    const emailSubject = encodeURIComponent(`Unverbindliche Beratung & Kostenangebot zu Ihrer Zahnbehandlung - DentArt Istanbul`);
+    const emailBody = encodeURIComponent(
+`Sehr geehrte/r Frau/Herr ${l.author},
+
+wir haben Ihre Anfrage bezüglich "${l.treatment_category}" aufmerksam gelesen.
+
+Als TÜV- und CE-zertifizierte Zahnklinik in Istanbul bieten wir deutschsprachigen Patienten:
+• Bis zu 70% Ersparnis bei CE- und TÜV-zertifizierten Markenimplantaten (Straumann / Nobel Biocare)
+• Kostenlose digitale Vorab-Analyse Ihres Heil- und Kostenplans / Ihrer Röntgenbilder
+• All-Inclusive Pakete inklusive 5-Sterne Hotel und privatem VIP-Shuttle-Service
+• Vollständige deutschsprachige Chefarzt- und Patientenbetreuung
+
+Gerne erstellen wir Ihnen innerhalb von 24 Stunden einen unverbindlichen Behandlungs- und Kostenplan.
+
+Mit freundlichen Grüßen,
+DentArt International Patient Care Team
+WhatsApp: +90 555 123 4567
+Web: www.dentart-international.com`
+    );
+
+    const mailtoLink = `mailto:${cleanEmail}?subject=${emailSubject}&body=${emailBody}`;
+
+    return `
+      <div class="email-lead-card" id="email-card-${l.id}">
+        <div class="email-card-top">
+          <div class="email-author-wrap">
+            <div class="email-author-avatar">${initial}</div>
+            <div>
+              <div class="email-author-name">@${cleanAuthor}</div>
+              <div class="email-source-badge">
+                <span>Kaynak: ${escapeHtml(l.source || 'forum')}</span>
+                <span>• ${formatTimeAgo(l.created_at)}</span>
+              </div>
+            </div>
+          </div>
+          <span class="email-country-flag" title="${escapeHtml(l.location || '')}">${flag}</span>
+        </div>
+
+        <div class="email-address-bar">
+          <span class="email-address-text">${cleanEmail}</span>
+          <button type="button" class="btn-copy-email" onclick="copyEmailText('${cleanEmail}')" title="E-Postayı Kopyala">
+            📋 Kopyala
+          </button>
+        </div>
+
+        <div class="email-treatment-tag">
+          ${cleanCategory}
+        </div>
+
+        <div class="email-card-snippet" title="${cleanContent}">
+          "${cleanContent}"
+        </div>
+
+        <div class="email-card-actions">
+          <a href="${mailtoLink}" class="btn-send-email-direct" target="_blank" rel="noopener noreferrer">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22 6 12 13 2 6"/></svg>
+            <span>✉️ Tek Tıkla E-Posta Gönder</span>
+          </a>
+
+          <div class="email-card-secondary-links">
+            <a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" class="email-post-link">
+              <span>🔗 Orijinal Gönderiyi Gör &rarr;</span>
+            </a>
+            <span style="font-size: 11px; color: #34d399; font-weight: 600;">%${l.ai_score || 95} Eşleşme</span>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  emailLeadsContainer.innerHTML = cardsHtml;
+}
+
+function copyEmailText(email) {
+  if (!email) return;
+  navigator.clipboard.writeText(email).then(() => {
+    showToast(`✅ E-Posta panoya kopyalandı: ${email}`, 'success');
+  }).catch(() => {
+    showToast(`E-Posta: ${email}`, 'success');
+  });
+}
+
+function copyAllEmails() {
+  if (!emailLeadsCache || emailLeadsCache.length === 0) {
+    showToast('Kopyalanacak e-posta adresi bulunamadı.', 'error');
+    return;
+  }
+  const emailList = [...new Set(emailLeadsCache.map(l => l.email).filter(Boolean))];
+  const text = emailList.join(', ');
+  navigator.clipboard.writeText(text).then(() => {
+    showToast(`📋 ${emailList.length} adet e-posta panoya kopyalandı! (BCC için hazır)`, 'success');
+  }).catch(() => {
+    showToast(`Kopyalandı: ${emailList.length} e-posta`, 'success');
+  });
 }

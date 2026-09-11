@@ -28,6 +28,7 @@ db.exec(`
     ai_score INTEGER DEFAULT 50,
     suggested_reply TEXT,
     status TEXT DEFAULT 'new',
+    email TEXT,
     created_at TEXT NOT NULL
   );
 
@@ -38,6 +39,13 @@ db.exec(`
     scanned_at TEXT NOT NULL
   );
 `);
+
+// Migration: Var olan veritabanında email kolonu yoksa otomatik ekle
+try {
+  db.exec("ALTER TABLE leads ADD COLUMN email TEXT;");
+} catch (e) {
+  // Kolon zaten var
+}
 
 const database = {
   // Post daha önce kaydedilmiş mi kontrol et
@@ -71,8 +79,8 @@ const database = {
       INSERT INTO leads (
         source, source_id, author, author_url, url, content, 
         treatment_category, urgency, location, sentiment, 
-        ai_score, suggested_reply, status, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ai_score, suggested_reply, status, email, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const result = stmt.run(
@@ -89,6 +97,7 @@ const database = {
       data.ai_score || 70,
       data.suggested_reply || '',
       data.status || 'new',
+      data.email || null,
       createdAt
     );
 
@@ -126,12 +135,81 @@ const database = {
       query += ' AND source = ?';
       params.push(filters.source);
     }
+    if (filters.hasEmail) {
+      query += " AND email IS NOT NULL AND email != ''";
+    }
 
-    query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
+    // Klinik Ciddiyet / Triyaj Sıralaması
+    if (filters.sortBy === 'date') {
+      query += ' ORDER BY created_at DESC';
+    } else {
+      // Varsayılan: En acil ve yüksek puanlı hastalar en başta
+      query += ` ORDER BY 
+        CASE urgency 
+          WHEN 'critical' THEN 1 
+          WHEN 'high' THEN 2 
+          WHEN 'medium' THEN 3 
+          ELSE 4 
+        END ASC, 
+        ai_score DESC, 
+        created_at DESC`;
+    }
+
+    query += ' LIMIT ? OFFSET ?';
     params.push(filters.limit || 100, filters.offset || 0);
 
     const stmt = db.prepare(query);
     return stmt.all(...params);
+  },
+
+  // Toplu Hızlı Lead Ekleme (Transaction ile yüksek performans)
+  addLeadsBatch(leadsList) {
+    db.exec('BEGIN TRANSACTION');
+    const stmt = db.prepare(`
+      INSERT INTO leads (
+        source, source_id, author, author_url, url, content, 
+        treatment_category, urgency, location, sentiment, 
+        ai_score, suggested_reply, status, email, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    let inserted = 0;
+    try {
+      for (const data of leadsList) {
+        if (data.source_id && this.isDuplicate(data.source, data.source_id)) {
+          continue;
+        }
+        stmt.run(
+          data.source || 'web',
+          data.source_id || `lead_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+          data.author || 'Anonim',
+          data.author_url || '',
+          data.url || '#',
+          data.content,
+          data.treatment_category || 'general_checkup',
+          data.urgency || 'medium',
+          data.location || 'Almanya 🇩🇪',
+          data.sentiment || 'Nötr',
+          data.ai_score || 70,
+          data.suggested_reply || '',
+          data.status || 'new',
+          data.email || null,
+          data.created_at || new Date().toISOString()
+        );
+        inserted++;
+      }
+      db.exec('COMMIT');
+    } catch (err) {
+      db.exec('ROLLBACK');
+      throw err;
+    }
+    return inserted;
+  },
+
+  // Sadece e-postası bulunan lead'leri getir
+  getEmailLeads() {
+    const stmt = db.prepare("SELECT * FROM leads WHERE email IS NOT NULL AND email != '' ORDER BY created_at DESC");
+    return stmt.all();
   },
 
   // 90 günden eski kalıntıları temizle
@@ -159,6 +237,9 @@ const database = {
     const contactedStmt = db.prepare("SELECT COUNT(*) as count FROM leads WHERE status IN ('contacted', 'appointment')");
     const contacted = contactedStmt.all()[0]?.count || 0;
 
+    const emailStmt = db.prepare("SELECT COUNT(*) as count FROM leads WHERE email IS NOT NULL AND email != ''");
+    const withEmail = emailStmt.all()[0]?.count || 0;
+
     const categoriesStmt = db.prepare('SELECT treatment_category, COUNT(*) as count FROM leads GROUP BY treatment_category');
     const categories = categoriesStmt.all();
 
@@ -169,6 +250,7 @@ const database = {
       totalLeads: total,
       urgentLeads: urgent,
       contactedLeads: contacted,
+      withEmailLeads: withEmail,
       categories,
       sources
     };
@@ -183,13 +265,14 @@ const database = {
   // Tüm lead'leri CSV formatında döndür
   exportCsv() {
     const leads = this.getLeads({ limit: 10000 });
-    const headers = ['ID', 'Tarih', 'Kaynak', 'Kullanıcı', 'Konum', 'Tedavi', 'Aciliyet', 'Skor', 'Durum', 'Link', 'Mesaj', 'AI Yanıt Önerisi'];
+    const headers = ['ID', 'Tarih', 'Kaynak', 'Kullanıcı', 'E-Posta', 'Konum', 'Tedavi', 'Aciliyet', 'Skor', 'Durum', 'Link', 'Mesaj', 'AI Yanıt Önerisi'];
     
     const rows = leads.map(l => [
       l.id,
       `"${l.created_at}"`,
       `"${l.source}"`,
       `"${l.author}"`,
+      `"${l.email || ''}"`,
       `"${l.location}"`,
       `"${l.treatment_category}"`,
       `"${l.urgency}"`,
