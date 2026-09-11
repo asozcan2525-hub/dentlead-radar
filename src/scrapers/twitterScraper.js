@@ -2,6 +2,7 @@
  * X (Twitter) DACH Bölgesi (Almanya, Avusturya, İsviçre) Sağlık Turizmi Tarayıcısı
  */
 
+require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 
@@ -31,12 +32,17 @@ const twitterScraper = {
         const query = encodeURIComponent('(Zahnimplantat OR Zahnersatz OR "Zähne Türkei" OR "Zahnarzt Kosten" OR Veneers) lang:de -is:retweet');
         const url = `https://twitter154.p.rapidapi.com/search/search?query=${query}&section=top&min_likes=0&limit=20`;
 
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+
         const res = await fetch(url, {
+          signal: controller.signal,
           headers: {
             'x-rapidapi-key': rapidApiKey,
             'x-rapidapi-host': 'twitter154.p.rapidapi.com'
           }
         });
+        clearTimeout(timeoutId);
 
         if (res.ok) {
           const data = await res.json();

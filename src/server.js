@@ -99,6 +99,9 @@ app.get('/api/config', (req, res) => {
   if (process.env.SERPAPI_KEY && !config.api_keys.serpapi_key) {
     config.api_keys.serpapi_key = process.env.SERPAPI_KEY;
   }
+  if (process.env.RAPIDAPI_KEY && !config.api_keys.rapidapi_key) {
+    config.api_keys.rapidapi_key = process.env.RAPIDAPI_KEY;
+  }
   res.json({ success: true, config });
 });
 
@@ -112,10 +115,14 @@ app.post('/api/config', (req, res) => {
     if (newConfig.api_keys?.serpapi_key) {
       process.env.SERPAPI_KEY = newConfig.api_keys.serpapi_key;
     }
+    if (newConfig.api_keys?.rapidapi_key) {
+      process.env.RAPIDAPI_KEY = newConfig.api_keys.rapidapi_key;
+    }
     try {
       let envLines = [`PORT=${process.env.PORT || 3000}`];
       if (process.env.GEMINI_API_KEY) envLines.push(`GEMINI_API_KEY=${process.env.GEMINI_API_KEY}`);
       if (process.env.SERPAPI_KEY) envLines.push(`SERPAPI_KEY=${process.env.SERPAPI_KEY}`);
+      if (process.env.RAPIDAPI_KEY) envLines.push(`RAPIDAPI_KEY=${process.env.RAPIDAPI_KEY}`);
       fs.writeFileSync(path.join(__dirname, '../.env'), envLines.join('\n') + '\n', 'utf8');
     } catch (_) {}
     saveConfig(newConfig);
