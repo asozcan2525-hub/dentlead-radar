@@ -96,6 +96,9 @@ app.get('/api/config', (req, res) => {
   if (process.env.GEMINI_API_KEY && !config.api_keys.gemini_api_key) {
     config.api_keys.gemini_api_key = process.env.GEMINI_API_KEY;
   }
+  if (process.env.SERPAPI_KEY && !config.api_keys.serpapi_key) {
+    config.api_keys.serpapi_key = process.env.SERPAPI_KEY;
+  }
   res.json({ success: true, config });
 });
 
@@ -105,11 +108,16 @@ app.post('/api/config', (req, res) => {
     const newConfig = req.body;
     if (newConfig.api_keys?.gemini_api_key) {
       process.env.GEMINI_API_KEY = newConfig.api_keys.gemini_api_key;
-      try {
-        const envContent = `PORT=${process.env.PORT || 3000}\nGEMINI_API_KEY=${newConfig.api_keys.gemini_api_key}\n`;
-        fs.writeFileSync(path.join(__dirname, '../.env'), envContent, 'utf8');
-      } catch (_) {}
     }
+    if (newConfig.api_keys?.serpapi_key) {
+      process.env.SERPAPI_KEY = newConfig.api_keys.serpapi_key;
+    }
+    try {
+      let envLines = [`PORT=${process.env.PORT || 3000}`];
+      if (process.env.GEMINI_API_KEY) envLines.push(`GEMINI_API_KEY=${process.env.GEMINI_API_KEY}`);
+      if (process.env.SERPAPI_KEY) envLines.push(`SERPAPI_KEY=${process.env.SERPAPI_KEY}`);
+      fs.writeFileSync(path.join(__dirname, '../.env'), envLines.join('\n') + '\n', 'utf8');
+    } catch (_) {}
     saveConfig(newConfig);
     res.json({ success: true, message: 'Ayarlar başarıyla kaydedildi' });
   } catch (err) {

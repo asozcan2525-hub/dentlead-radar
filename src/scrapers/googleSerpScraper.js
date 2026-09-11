@@ -1,6 +1,6 @@
 /**
- * Google Arama & Soru Portalları (SERP) Modülü
- * SerpApi veya Google Custom Search API tanımlandığında son tartışmaları çeker.
+ * Google Arama & DACH Forum Portalları (SERP) Modülü
+ * SerpApi ile Google Germany (gl=de, hl=de) ve Gutefrage.net/Med1 tartışmalarını canlı çeker.
  */
 
 const fs = require('fs');
@@ -28,30 +28,38 @@ const googleSerpScraper = {
       return rawItems;
     }
 
-    try {
-      const query = encodeURIComponent('"diş hekimi tavsiyesi" OR "implant yaptıranlar" OR "dişim ağrıyor" site:forum.donanimhaber.com OR site:kizlarsoruyor.com OR site:doktortakvimi.com');
-      const url = `https://serpapi.com/search.json?q=${query}&tbm=nws&api_key=${serpApiKey}&num=10&gl=tr&hl=tr`;
+    // Hedef DACH arama sorguları
+    const queries = [
+      '(Zahnimplantat OR Zahnersatz OR Zahnklinik) (Türkei OR Istanbul) site:gutefrage.net',
+      '(Zahnbehandlung OR Zahnimplantate) Ausland Erfahrungen site:gutefrage.net'
+    ];
 
-      const res = await fetch(url);
-      if (res.ok) {
-        const data = await res.json();
-        const results = data.organic_results || data.news_results || [];
+    for (const qText of queries) {
+      try {
+        const query = encodeURIComponent(qText);
+        const url = `https://serpapi.com/search.json?q=${query}&engine=google&gl=de&hl=de&num=10&api_key=${serpApiKey}`;
 
-        for (const item of results) {
-          rawItems.push({
-            source: 'google',
-            source_id: `google_${item.position || Math.random().toString(36).substring(7)}`,
-            author: item.source || 'Açık Tartışma',
-            author_url: item.link,
-            url: item.link,
-            content: `${item.title}: ${item.snippet || ''}`,
-            created_at: new Date().toISOString(),
-            location: 'Türkiye'
-          });
+        const res = await fetch(url);
+        if (res.ok) {
+          const data = await res.json();
+          const results = data.organic_results || [];
+
+          for (const item of results) {
+            rawItems.push({
+              source: 'forum',
+              source_id: `serp_${item.position || Math.random().toString(36).substring(7)}_${Buffer.from(item.link || '').toString('base64').slice(-8)}`,
+              author: 'Gutefrage / DACH Forum',
+              author_url: item.link,
+              url: item.link,
+              content: `${item.title}: ${item.snippet || ''}`,
+              created_at: new Date().toISOString(),
+              location: 'Almanya 🇩🇪'
+            });
+          }
         }
+      } catch (err) {
+        console.warn('SerpApi arama uyarısı:', err.message);
       }
-    } catch (err) {
-      console.warn('SerpApi arama uyarısı:', err.message);
     }
 
     return rawItems;
@@ -59,3 +67,4 @@ const googleSerpScraper = {
 };
 
 module.exports = googleSerpScraper;
+
