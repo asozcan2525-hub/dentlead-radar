@@ -37,6 +37,12 @@ const aiAnalyzer = {
     const lowerText = (text || '').toLowerCase();
     const lang = detectLanguage(text);
 
+    // 0. Katı Tarih ve Tazelik Kontrolü (En fazla 90 Gün / 3 Ay)
+    const freshnessCheck = this.checkFreshness(text, metadata);
+    if (!freshnessCheck.isFresh) {
+      return { is_lead: false, reason: freshnessCheck.reason };
+    }
+
     // 1. Negatif Filtre Kontrolü (Deyimler, Hayvanlar)
     for (const neg of KEYWORD_MATRIX.negative_filters) {
       if (lowerText.includes(neg)) {
@@ -127,14 +133,17 @@ const aiAnalyzer = {
 
     if (geminiKey) {
       try {
-        const llmResult = await this.callGemini(geminiKey, text, detectedCategory, urgency, detectedLocation, lang);
+        const llmResult = await this.callGemini(geminiKey, text, detectedCategory, urgency, detectedLocation, lang, metadata);
         if (llmResult) {
+          if (llmResult.is_lead === false) {
+            return { is_lead: false, reason: llmResult.reject_reason || 'AI Tarih/Tazelik Filtresine takıldı (90 günden eski veya arşivlenmiş).' };
+          }
           return {
             is_lead: true,
             treatment_category: llmResult.treatment_category || detectedCategory,
             urgency: llmResult.urgency || urgency,
             location: llmResult.location || detectedLocation,
-            sentiment: llmResult.sentiment || (lang === 'de' ? 'Interesse an Zahnbehandlung Türkei' : 'Hasta Arayışı'),
+            sentiment: llmResult.patient_intent_summary || llmResult.sentiment || (lang === 'de' ? 'Interesse an Zahnbehandlung Türkei' : 'Hasta Arayışı'),
             ai_score: llmResult.ai_score || aiScore,
             suggested_reply: llmResult.suggested_reply,
             matched_keywords: matchedKeywords
@@ -195,26 +204,92 @@ const aiAnalyzer = {
   },
 
   /**
-   * Gemini API ile DACH Sağlık Turizmi Analizi
+   * 📅 Katı Tarih ve Tazelik Denetçisi (En fazla 90 gün / 3 ay)
+   * Eski arşiv, silinmiş kullanıcı ve 1+ yıllık gönderileri kesin olarak eler.
    */
-  async callGemini(apiKey, text, category, urgency, location, lang) {
-    // Gemini 3.6 Flash (ultra-hızlı) ve Flash-Latest
-    const models = ['gemini-3.6-flash', 'gemini-flash-latest'];
-    const prompt = `Du bist ein erfahrener zahnmedizinischer Patientenberater für Gesundheitstourismus in einer renommierten Zahnklinik in Istanbul.
-Analysiere folgenden Text aus einem deutschen Forum / Social Media:
+  checkFreshness(text, metadata = {}) {
+    const combined = `${text || ''} ${metadata.author || ''} ${metadata.url || ''} ${metadata.snippet || ''} ${metadata.date || ''}`.toLowerCase();
 
-TEXT: "${text.replace(/"/g, '\\"')}"
+    // 1. Arşivlenmiş ve Silinmiş Gönderi Belirteçleri
+    if (
+      combined.includes('arşivlenmiş') ||
+      combined.includes('archiviert') ||
+      combined.includes('archived') ||
+      combined.includes('[silindi]') ||
+      combined.includes('[deleted]') ||
+      combined.includes('[removed]')
+    ) {
+      return { isFresh: false, reason: 'Gönderi arşivlenmiş veya silinmiş hesap.' };
+    }
 
-Antworte AUSSCHLIESSLICH mit einem validen JSON-Objekt (kein Markdown, kein weiterer Text):
+    // 2. Yıllar Öncesi Zaman İfadeleri (1+ yıl önce, 2 yıl önce, 4 yıl önce vb.)
+    const oldTimeRegex = /(?:(\d+)\s*(?:yıl|yil|sene)\s*önce)|(?:vor\s*(\d+)\s*jahren?)|(?:(\d+)\s*years?\s*ago)|(?:(\d+)\s*yrs?\s*ago)/i;
+    const matchOld = combined.match(oldTimeRegex);
+    if (matchOld) {
+      return { isFresh: false, reason: `Eski tarih tespit edildi: "${matchOld[0]}" (90 günden eski)` };
+    }
+
+    // 3. 2025 ve Öncesi Yıl Tespiti (2020, 2021, 2022, 2023, 2024, 2025)
+    const oldYearRegex = /\b(201\d|202[0-5])\b/;
+    const matchYear = combined.match(oldYearRegex);
+    if (matchYear) {
+      return { isFresh: false, reason: `Eski yıl tespit edildi: ${matchYear[0]} (Geçerli aralık: 2026)` };
+    }
+
+    // 4. Metadata İçindeki created_at / date Kontrolü
+    const dateToCheck = metadata.created_at || metadata.date;
+    if (dateToCheck) {
+      const parsedDate = new Date(dateToCheck);
+      if (!isNaN(parsedDate.getTime())) {
+        const diffDays = (Date.now() - parsedDate.getTime()) / (1000 * 60 * 60 * 24);
+        if (diffDays > 90) {
+          return { isFresh: false, reason: `Gönderi tarihi ${Math.round(diffDays)} gün öncesine ait (Maksimum 90 gün)` };
+        }
+      }
+    }
+
+    return { isFresh: true };
+  },
+
+  /**
+   * Gemini API ile DACH Sağlık Turizmi ve Tarih Analizi
+   */
+  async callGemini(apiKey, text, category, urgency, location, lang, metadata = {}) {
+    const models = ['gemini-3.6-flash', 'gemini-3.7-flash', 'gemini-flash-latest', 'gemini-2.5-flash'];
+    const prompt = `Du bist ein erfahrener zahnmedizinischer Chef-Berater für internationalen Gesundheitstourismus (Türkei / Istanbul).
+Deine wichtigste Aufgabe ist es, den folgenden Text aus Social Media / Foren tiefgehend auf ECHTE PATIENTEN-ABSICHT (GENUINE PATIENT INTENT) und AKTUALITÄT zu prüfen.
+
+WICHTIGSTE REGEL: Wir suchen ausschließlich ECHTE MENSCHEN, DIE PERSÖNLICH FÜR SICH SELBST (oder einen direkten Angehörigen wie Mutter/Vater) EINE ZAHNBEHANDLUNG SUCHEN!
+
+STRIKTE AUSSCHLUSSKRITERIEN (Sofort mit {"is_lead": false, "reject_reason": "..."} ablehnen):
+1. KLINIK-WERBUNG / MARKETING: Der Verfasser ist eine Zahnklinik, ein Vermittler, Promoter oder Arzt, der eigene Dienste anbietet (z.B. "DM us", "We offer", "Book your Hollywood Smile", "Unsere Praxis", "Vorher-Nachher"). -> reject_reason: "clinic_advertisement_or_promoter"
+2. KEIN BEHANDLUNGSBEDARF: Allgemeine Hygiene-Tipps, Diät-Tipps, Smalltalk, Witze oder rein akademische Diskussionen ohne persönliche Behandlungsabsicht. -> reject_reason: "not_a_patient_inquiry"
+3. VERALTET / ARCHIVIERT: Älter als 90 Tage (z.B. aus 2021-2024, vor 1-4 Jahren), archiviert, gesperrt oder gelöscht. -> reject_reason: "older_than_90_days_or_archived"
+
+ZULASSUNGSKRITERIEN (NUR DANN {"is_lead": true}):
+- Eine echte Person beschreibt ein persönliches Zahnproblem (Zahnschmerzen, fehlende Zähne, Zähneknirschen, schiefe/verfärbte Zähne, abgebrochener Zahn, gescheiterte Wurzelbehandlung).
+- ODER stellt Fragen zu Behandlungen/Kosten/Kliniken (z.B. "Was kostet All-on-4 in Istanbul?", "Welche Klinik könnt ihr empfehlen?", "Wie viel habt ihr für eure Zirkonkronen bezahlt?", "Brauche Knochenaufbau, wer hat Erfahrungen?").
+- ODER vergleicht einen teuren Kostenvoranschlag aus Deutschland/Österreich/Schweiz/UK mit einer Behandlung im Ausland.
+
+Antworte AUSSCHLIESSLICH im folgenden JSON-Format (kein Markdown, keine Backticks):
 {
   "is_lead": true,
+  "patient_intent_summary": "Prägnante Zusammenfassung auf Türkisch/Deutsch, was der Patient konkret für sich selbst sucht.",
   "treatment_category": "implant",
   "urgency": "high",
-  "location": "Almanya / Avusturya / Schweiz Stadt oder Land",
-  "sentiment": "Interesse an Zahnbehandlung Ausland / Kostenvergleich",
-  "ai_score": 90,
-  "suggested_reply": "Eine hochprofessionelle, vertrauensbildende Antwort auf Deutsch (3-4 Sätze)."
-}`;
+  "location": "Erkannter Wohnort / Land des Patienten",
+  "ai_score": 92,
+  "suggested_reply": "Eine empathische, hochprofessionelle Antwort als Chefarzt auf Deutsch oder Englisch (passend zur Sprache des Patienten), die genau auf sein geschildertes Problem eingeht, TÜV-geprüfte Qualität und kostenlose Vorab-Röntgenprüfung anbietet (3-4 Sätze)."
+}
+
+FALLS KEIN ECHTER PATIENT ODER ABGELEHNT:
+{
+  "is_lead": false,
+  "reject_reason": "Kurze präzise Begründung (z.B. clinic_advertisement_or_promoter, not_a_patient_inquiry, older_than_90_days)"
+}
+
+TEXT ZUR ANALYSE:
+"${(text || '').replace(/"/g, '\\"')}"`;
 
     for (const model of models) {
       try {
@@ -228,8 +303,6 @@ Antworte AUSSCHLIESSLICH mit einem validen JSON-Objekt (kein Markdown, kein weit
         });
 
         if (!response.ok) {
-          const errBody = await response.text();
-          console.warn(`Gemini (${model}) başarısız: HTTP ${response.status} - ${errBody.slice(0, 100)}`);
           continue;
         }
 
@@ -237,10 +310,11 @@ Antworte AUSSCHLIESSLICH mit einem validen JSON-Objekt (kein Markdown, kein weit
         const rawAnswer = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
         const match = rawAnswer.match(/\{[\s\S]*\}/);
         if (match) {
-          return JSON.parse(match[0]);
+          const parsed = JSON.parse(match[0]);
+          return parsed;
         }
       } catch (err) {
-        console.warn(`Gemini (${model}) çağrısında hata:`, err.message);
+        // Sonraki modele geç
       }
     }
     return null;

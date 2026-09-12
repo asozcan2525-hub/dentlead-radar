@@ -1487,3 +1487,853 @@ body {
   line-height: 1.4;
   flex: 1;
 }
+
+/* ==========================================================================
+   📧 OUTREACH MERKEZİ STİLLERİ (YENİ)
+   ========================================================================== */
+
+/* Outreach Kartı */
+.outreach-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.outreach-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #0ea5e9, #8b5cf6, #06b6d4);
+  opacity: 0;
+  transition: var(--transition);
+}
+
+.outreach-card:hover::before {
+  opacity: 1;
+}
+
+.outreach-card.card-contacted {
+  border-color: rgba(16, 185, 129, 0.35);
+  background: rgba(16, 185, 129, 0.05);
+}
+
+.outreach-card.card-contacted::before {
+  background: linear-gradient(90deg, #10b981, #34d399);
+  opacity: 1;
+}
+
+.outreach-card.card-appointment {
+  border-color: rgba(168, 85, 247, 0.35);
+  background: rgba(168, 85, 247, 0.05);
+}
+
+.outreach-card.card-appointment::before {
+  background: linear-gradient(90deg, #a855f7, #c084fc);
+  opacity: 1;
+}
+
+/* Outreach Kart Badge'leri */
+.outreach-card-badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.outreach-urgency-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+}
+
+/* Outreach E-posta Çubuğu */
+.outreach-email-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.email-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Durum Badge'leri */
+.outreach-status-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+}
+
+.status-new {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+.status-contacted {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.status-appointment {
+  background: rgba(168, 85, 247, 0.15);
+  color: #c084fc;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+}
+
+.status-ignored {
+  background: rgba(148, 163, 184, 0.1);
+  color: #64748b;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+/* Eşleşme Skoru Çubuğu */
+.outreach-score-bar {
+  position: relative;
+  height: 20px;
+  background: rgba(15, 23, 42, 0.75);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.outreach-score-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #0284c7, #06b6d4, #34d399);
+  border-radius: var(--radius-full);
+  transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  opacity: 0.7;
+}
+
+.outreach-score-label {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  white-space: nowrap;
+}
+
+/* Outreach Aksiyon Butonları */
+.outreach-card-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.outreach-send-buttons {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Gmail Butonu */
+.btn-gmail-send {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  background: linear-gradient(135deg, #ea4335, #d93025);
+  color: #fff;
+  font-weight: 600;
+  font-size: 12px;
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  transition: var(--transition);
+  box-shadow: 0 3px 12px rgba(234, 67, 53, 0.3);
+  white-space: nowrap;
+}
+
+.btn-gmail-send:hover {
+  background: linear-gradient(135deg, #d93025, #c62828);
+  box-shadow: 0 5px 18px rgba(234, 67, 53, 0.5);
+  transform: translateY(-1px);
+}
+
+/* Outlook Butonu */
+.btn-outlook-send {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 12px;
+  background: linear-gradient(135deg, #0078d4, #106ebe);
+  color: #fff;
+  font-weight: 600;
+  font-size: 12px;
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  transition: var(--transition);
+  box-shadow: 0 3px 12px rgba(0, 120, 212, 0.3);
+  white-space: nowrap;
+}
+
+.btn-outlook-send:hover {
+  background: linear-gradient(135deg, #106ebe, #005a9e);
+  box-shadow: 0 5px 18px rgba(0, 120, 212, 0.5);
+  transform: translateY(-1px);
+}
+
+/* Mailto Butonu */
+.btn-mailto-send {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  font-size: 14px;
+  transition: var(--transition);
+}
+
+.btn-mailto-send:hover {
+  background: rgba(56, 189, 248, 0.2);
+  border-color: #38bdf8;
+  transform: translateY(-1px);
+}
+
+/* Durum ve Link Butonları */
+.outreach-status-buttons {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-outreach-status {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #94a3b8;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--transition);
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-outreach-status:hover {
+  background: rgba(56, 189, 248, 0.15);
+  border-color: rgba(56, 189, 248, 0.4);
+}
+
+.btn-outreach-status.active-status {
+  background: rgba(16, 185, 129, 0.2);
+  border-color: rgba(16, 185, 129, 0.5);
+  color: #34d399;
+}
+
+.btn-outreach-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  font-size: 14px;
+  transition: var(--transition);
+}
+
+.btn-outreach-link:hover {
+  background: rgba(56, 189, 248, 0.15);
+  border-color: rgba(56, 189, 248, 0.4);
+}
+
+/* Outreach Toolbar */
+.outreach-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.outreach-lang-switch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.outreach-lang-switch label {
+  font-size: 12px;
+  color: #94a3b8;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.select-sm {
+  padding: 5px 10px !important;
+  font-size: 12px !important;
+  min-width: auto !important;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .outreach-card-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .outreach-send-buttons {
+    width: 100%;
+  }
+
+  .btn-gmail-send,
+  .btn-outlook-send {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .outreach-status-buttons {
+    justify-content: flex-end;
+  }
+
+  .outreach-toolbar-actions {
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+  }
+
+  .email-modal-toolbar {
+    flex-direction: column;
+    gap: 10px;
+  }
+}
+
+/* =================================================== */
+/* 📌 KANIT & GEREKÇE (Neye Göre Bulundu) STİLLERİ      */
+/* =================================================== */
+.lead-evidence-box {
+  background: rgba(14, 165, 233, 0.08);
+  border: 1px solid rgba(14, 165, 233, 0.25);
+  border-left: 3px solid #38bdf8;
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  margin: 12px 0 10px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.evidence-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.evidence-badge-tag {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.15);
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.evidence-source-tag {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.evidence-reason {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #f1f5f9;
+}
+
+.evidence-reason strong {
+  color: #38bdf8;
+}
+
+.evidence-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.evidence-email-pill {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+.action-links-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.btn-verify-source-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.25), rgba(99, 102, 241, 0.3));
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.5);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+}
+
+.btn-verify-source-main:hover {
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.4), rgba(99, 102, 241, 0.5));
+  color: #ffffff;
+  border-color: #38bdf8;
+  box-shadow: 0 4px 14px rgba(56, 189, 248, 0.3);
+  transform: translateY(-1px);
+}
+
+.btn-link-email-direct {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  transition: all 0.2s ease;
+}
+
+.btn-link-email-direct:hover {
+  background: rgba(16, 185, 129, 0.3);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+/* Outreach Evidence Stilleri */
+.outreach-evidence-box {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-left: 3px solid #38bdf8;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin: 10px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.outreach-evidence-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.outreach-evidence-tag {
+  font-size: 10px;
+  font-weight: 700;
+  color: #38bdf8;
+  letter-spacing: 0.05em;
+}
+
+.outreach-evidence-platform {
+  font-size: 10px;
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.outreach-evidence-text {
+  font-size: 12px;
+  line-height: 1.45;
+  color: #e2e8f0;
+}
+
+.outreach-evidence-text strong {
+  color: #38bdf8;
+}
+
+.outreach-evidence-date {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.outreach-verify-link-row {
+  margin-top: 10px;
+  display: flex;
+}
+
+.btn-outreach-source-link {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  background: rgba(56, 189, 248, 0.12);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  transition: all 0.2s ease;
+}
+
+.btn-outreach-source-link:hover {
+  background: rgba(56, 189, 248, 0.25);
+  color: #ffffff;
+  border-color: #38bdf8;
+  box-shadow: 0 4px 12px rgba(56, 189, 248, 0.2);
+}
+
+/* ==========================================================================
+   🧭 KANAL SEKMELERİ (CHANNEL TABS - INSTAGRAM, FACEBOOK, FORUM, EMAIL)
+   ========================================================================== */
+
+.channel-tabs-container {
+  padding: 18px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: rgba(13, 20, 38, 0.7);
+  border: 1px solid rgba(0, 242, 254, 0.2);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.channel-tabs-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.channel-tabs-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.channel-tabs-indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent-cyan);
+  box-shadow: 0 0 10px var(--accent-cyan);
+  animation: pulse-ring 2s infinite;
+}
+
+.channel-tabs-heading {
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+  letter-spacing: -0.3px;
+}
+
+.channel-tabs-sub {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.channel-active-label {
+  font-size: 12px;
+  color: #cbd5e1;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.channel-active-label strong {
+  color: #00f2fe;
+}
+
+.channel-tabs-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.channel-tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.channel-tab-btn:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+}
+
+.channel-tab-icon {
+  font-size: 24px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.channel-tab-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.channel-tab-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #f1f5f9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.channel-tab-desc {
+  font-size: 11px;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.channel-tab-badge {
+  font-size: 12px;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+/* Tab Aktif Durumları ve Renk Temaları */
+.channel-tab-btn.active {
+  background: linear-gradient(135deg, rgba(0, 242, 254, 0.12), rgba(59, 130, 246, 0.18));
+  border-color: #00f2fe;
+  box-shadow: 0 0 16px rgba(0, 242, 254, 0.25), inset 0 1px 0 rgba(0, 242, 254, 0.4);
+}
+
+.channel-tab-btn.active .channel-tab-name {
+  color: #ffffff;
+}
+
+/* Instagram Sekmesi */
+.channel-tab-btn.channel-tab-instagram.active {
+  background: linear-gradient(135deg, rgba(225, 48, 108, 0.18), rgba(253, 29, 29, 0.15), rgba(245, 96, 64, 0.15));
+  border-color: #e1306c;
+  box-shadow: 0 0 20px rgba(225, 48, 108, 0.35);
+}
+.badge-glow-instagram {
+  background: rgba(225, 48, 108, 0.25) !important;
+  color: #ff7597 !important;
+  border: 1px solid rgba(225, 48, 108, 0.5);
+}
+
+/* Facebook Sekmesi */
+.channel-tab-btn.channel-tab-facebook.active {
+  background: linear-gradient(135deg, rgba(24, 119, 242, 0.22), rgba(13, 98, 204, 0.18));
+  border-color: #1877f2;
+  box-shadow: 0 0 20px rgba(24, 119, 242, 0.35);
+}
+.badge-glow-facebook {
+  background: rgba(24, 119, 242, 0.25) !important;
+  color: #60a5fa !important;
+  border: 1px solid rgba(24, 119, 242, 0.5);
+}
+
+/* Forum Sekmesi */
+.channel-tab-btn.channel-tab-forums.active {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.18), rgba(5, 150, 105, 0.15));
+  border-color: #10b981;
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.35);
+}
+.badge-glow-forums {
+  background: rgba(16, 185, 129, 0.2) !important;
+  color: #34d399 !important;
+  border: 1px solid rgba(16, 185, 129, 0.5);
+}
+
+/* Email Sekmesi */
+.channel-tab-btn.channel-tab-email.active {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.22), rgba(217, 119, 6, 0.18));
+  border-color: #f59e0b;
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.35);
+}
+.badge-glow-email {
+  background: rgba(245, 158, 11, 0.25) !important;
+  color: #fbbf24 !important;
+  border: 1px solid rgba(245, 158, 11, 0.5);
+}
+
+/* ==========================================================================
+   🎯 LEAD KARTLARINDA KANAL TANITIM ŞERİTLERİ (CHANNEL BANNERS)
+   ========================================================================== */
+
+.card-channel-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  font-size: 11.5px;
+}
+
+.banner-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.banner-content strong {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+.banner-content span {
+  font-size: 11px;
+  opacity: 0.85;
+}
+
+.banner-instagram {
+  background: linear-gradient(90deg, rgba(225, 48, 108, 0.15), rgba(245, 96, 64, 0.1));
+  border-left: 3px solid #e1306c;
+  color: #ff94b4;
+}
+
+.banner-facebook {
+  background: linear-gradient(90deg, rgba(24, 119, 242, 0.15), rgba(59, 130, 246, 0.1));
+  border-left: 3px solid #1877f2;
+  color: #93c5fd;
+}
+
+.banner-email {
+  background: linear-gradient(90deg, rgba(245, 158, 11, 0.15), rgba(251, 191, 36, 0.1));
+  border-left: 3px solid #f59e0b;
+  color: #fde68a;
+}
+
+.banner-forums {
+  background: linear-gradient(90deg, rgba(14, 165, 233, 0.12), rgba(16, 185, 129, 0.1));
+  border-left: 3px solid #0284c7;
+  color: #bae6fd;
+}
+
+/* ==========================================================================
+   🚀 KANAL AKSİYON BUTONLARI (INSTAGRAM DM & FACEBOOK MSG)
+   ========================================================================== */
+
+.btn-channel-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 14px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-instagram-dm {
+  background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 4px 14px rgba(225, 48, 108, 0.35);
+}
+
+.btn-instagram-dm:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(225, 48, 108, 0.55);
+  color: #ffffff;
+}
+
+.btn-facebook-msg {
+  background: linear-gradient(135deg, #1877f2, #0d62cc);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 4px 14px rgba(24, 119, 242, 0.35);
+}
+
+.btn-facebook-msg:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(24, 119, 242, 0.55);
+  color: #ffffff;
+}
+
+/* ==========================================================================
+   📅 TAZELİK ETİKETLERİ (FRESHNESS BADGES)
+   ========================================================================== */
+
+.tag-fresh-super {
+  background: rgba(16, 185, 129, 0.18) !important;
+  color: #34d399 !important;
+  border: 1px solid rgba(16, 185, 129, 0.4) !important;
+  font-weight: 700;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.15);
+}
+
+.tag-fresh-active {
+  background: rgba(245, 158, 11, 0.18) !important;
+  color: #fbbf24 !important;
+  border: 1px solid rgba(245, 158, 11, 0.4) !important;
+  font-weight: 700;
+}
+
+.tag-fresh-normal {
+  background: rgba(14, 165, 233, 0.18) !important;
+  color: #38bdf8 !important;
+  border: 1px solid rgba(14, 165, 233, 0.4) !important;
+}
+
+.tag-fresh-archive {
+  background: rgba(148, 163, 184, 0.12) !important;
+  color: #94a3b8 !important;
+  border: 1px solid rgba(148, 163, 184, 0.25) !important;
+}
+

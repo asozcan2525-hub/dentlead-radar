@@ -53,7 +53,7 @@ const googleSerpScraper = {
     for (const qText of queries) {
       try {
         const query = encodeURIComponent(qText);
-        const url = `https://serpapi.com/search.json?q=${query}&engine=google&gl=de&hl=de&num=10&api_key=${serpApiKey}`;
+        const url = `https://serpapi.com/search.json?q=${query}&engine=google&gl=de&hl=de&tbs=qdr:m3&num=10&api_key=${serpApiKey}`;
 
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 12000);
@@ -81,7 +81,33 @@ const googleSerpScraper = {
             }
             if (isPromoter) continue;
 
-            // 🎯 2. Gerçek Hasta İfadesi Kontrolü (1. Tekil Şahıs)
+            // 📅 2. Katı Tarih & Tazelik Kontrolü (Maksimum 90 Gün)
+            const dateStr = (item.date || '').toLowerCase();
+            if (dateStr) {
+              if (
+                dateStr.includes('year') || dateStr.includes('yr') || 
+                dateStr.includes('jahr') || /\b(201\d|202[0-5])\b/.test(dateStr)
+              ) {
+                continue; // 90 günden eski sonuç elendi
+              }
+            }
+
+            // Metin içinde 2 yıl önce / 4 yıl önce / 2024 / silindi / arşiv kontrolü
+            const oldTimeRegex = /(?:(\d+)\s*(?:yıl|yil|sene)\s*önce)|(?:vor\s*(\d+)\s*jahren?)|(?:(\d+)\s*years?\s*ago)|(?:(\d+)\s*yrs?\s*ago)|\b(201\d|202[0-5])\b/i;
+            if (oldTimeRegex.test(combinedText)) {
+              continue; // Eski tarihli başlık/içerik elendi
+            }
+            if (
+              combinedText.includes('archiviert') || 
+              combinedText.includes('arşivlenmiş') || 
+              combinedText.includes('[silindi]') || 
+              combinedText.includes('[deleted]') ||
+              combinedText.includes('[removed]')
+            ) {
+              continue;
+            }
+
+            // 🎯 3. Gerçek Hasta İfadesi Kontrolü (1. Tekil Şahıs)
             const hasPatientSignal = (
               combinedText.includes('ich') || combinedText.includes('mein') || 
               combinedText.includes('mir') || combinedText.includes('brauche') || 
@@ -91,7 +117,17 @@ const googleSerpScraper = {
             );
             if (!hasPatientSignal) continue;
 
-            const finalDate = new Date().toISOString();
+            // Kesin hesaplanan tarih
+            let finalDate = new Date().toISOString();
+            if (dateStr) {
+              const daysMatch = dateStr.match(/(\d+)\s*(?:day|tag|gün)/);
+              const weeksMatch = dateStr.match(/(\d+)\s*(?:week|woche|hafta)/);
+              if (daysMatch) {
+                finalDate = new Date(Date.now() - parseInt(daysMatch[1]) * 24 * 60 * 60 * 1000).toISOString();
+              } else if (weeksMatch) {
+                finalDate = new Date(Date.now() - parseInt(weeksMatch[1]) * 7 * 24 * 60 * 60 * 1000).toISOString();
+              }
+            }
 
             rawItems.push({
               source: 'reddit',

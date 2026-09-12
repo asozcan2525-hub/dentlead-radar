@@ -47,6 +47,46 @@ try {
   // Kolon zaten var
 }
 
+// Otomatik Başlangıç Verisi Tohumlama (Render / Yeni Sunucu Kurulumu İçin)
+try {
+  const countRow = db.prepare("SELECT COUNT(*) as count FROM leads").get();
+  if (!countRow || countRow.count === 0) {
+    const seedPath = path.join(dataDir, 'verified_initial_leads.json');
+    if (fs.existsSync(seedPath)) {
+      const seedData = JSON.parse(fs.readFileSync(seedPath, 'utf8'));
+      const insertStmt = db.prepare(`
+        INSERT INTO leads (
+          source, source_id, author, author_url, url, content, 
+          treatment_category, urgency, location, sentiment, 
+          ai_score, suggested_reply, status, email, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      for (const lead of seedData) {
+        insertStmt.run(
+          lead.source || 'web',
+          lead.source_id || `lead_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+          lead.author || 'Anonim',
+          lead.author_url || '',
+          lead.url || '#',
+          lead.content || '',
+          lead.treatment_category || 'general_checkup',
+          lead.urgency || 'medium',
+          lead.location || 'Almanya 🇩🇪',
+          lead.sentiment || 'neutral',
+          lead.ai_score || 85,
+          lead.suggested_reply || '',
+          lead.status || 'new',
+          lead.email || null,
+          lead.created_at || new Date().toISOString()
+        );
+      }
+      console.log(`🌱 [Database Auto-Seed]: ${seedData.length} adet doğrulanmış gerçek hasta Render/yeni ortama yüklendi.`);
+    }
+  }
+} catch (seedErr) {
+  console.warn('Auto-seed uyarısı:', seedErr.message);
+}
+
 const database = {
   // Post daha önce kaydedilmiş mi kontrol et
   isDuplicate(source, sourceId) {
@@ -131,6 +171,18 @@ const database = {
       query += ' AND status = ?';
       params.push(filters.status);
     }
+    if (filters.channel && filters.channel !== 'all') {
+      if (filters.channel === 'instagram') {
+        query += " AND source = 'instagram'";
+      } else if (filters.channel === 'facebook') {
+        query += " AND source = 'facebook'";
+      } else if (filters.channel === 'forums') {
+        query += " AND source IN ('reddit', 'gutefrage', 'gutefrage.net', 'tripadvisor')";
+      } else if (filters.channel === 'email') {
+        query += " AND email IS NOT NULL AND email != ''";
+      }
+    }
+
     if (filters.source && filters.source !== 'all') {
       query += ' AND source = ?';
       params.push(filters.source);
@@ -246,13 +298,29 @@ const database = {
     const sourcesStmt = db.prepare('SELECT source, COUNT(*) as count FROM leads GROUP BY source');
     const sources = sourcesStmt.all();
 
+    const instagramStmt = db.prepare("SELECT COUNT(*) as count FROM leads WHERE source = 'instagram'");
+    const instagramCount = instagramStmt.all()[0]?.count || 0;
+
+    const facebookStmt = db.prepare("SELECT COUNT(*) as count FROM leads WHERE source = 'facebook'");
+    const facebookCount = facebookStmt.all()[0]?.count || 0;
+
+    const forumsStmt = db.prepare("SELECT COUNT(*) as count FROM leads WHERE source IN ('reddit', 'gutefrage', 'gutefrage.net', 'tripadvisor')");
+    const forumsCount = forumsStmt.all()[0]?.count || 0;
+
     return {
       totalLeads: total,
       urgentLeads: urgent,
       contactedLeads: contacted,
       withEmailLeads: withEmail,
       categories,
-      sources
+      sources,
+      channels: {
+        all: total,
+        instagram: instagramCount,
+        facebook: facebookCount,
+        forums: forumsCount,
+        email: withEmail
+      }
     };
   },
 

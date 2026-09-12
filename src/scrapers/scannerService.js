@@ -4,6 +4,7 @@ const forumScraper = require('./forumScraper');
 const germanForumScraper = require('./germanForumScraper');
 const googleSerpScraper = require('./googleSerpScraper');
 const youtubeScraper = require('./youtubeScraper');
+const facebookScraper = require('./facebookScraper');
 const simulationFeed = require('./simulationFeed');
 const aiAnalyzer = require('../core/aiAnalyzer');
 const database = require('../core/database');
@@ -46,13 +47,14 @@ const scannerService = {
 
     try {
       // 1. Tüm veri toplayıcıları paralel çalıştır
-      const [redditItems, twitterItems, germanForumItems, turkishForumItems, googleItems, youtubeItems] = await Promise.all([
+      const [redditItems, twitterItems, germanForumItems, turkishForumItems, googleItems, youtubeItems, facebookItems] = await Promise.all([
         redditScraper.scan().catch(() => []),
         twitterScraper.scan().catch(() => []),
         germanForumScraper.scan().catch(() => []),
         forumScraper.scan().catch(() => []),
         googleSerpScraper.scan().catch(() => []),
-        youtubeScraper.scan().catch(() => [])
+        youtubeScraper.scan().catch(() => []),
+        facebookScraper.scan().catch(() => [])
       ]);
 
       let allRawItems = [
@@ -61,7 +63,8 @@ const scannerService = {
         ...germanForumItems,
         ...turkishForumItems,
         ...googleItems,
-        ...youtubeItems
+        ...youtubeItems,
+        ...facebookItems
       ];
 
       totalDiscovered = allRawItems.length;

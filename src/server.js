@@ -8,6 +8,7 @@ const database = require('./core/database');
 const scannerService = require('./scrapers/scannerService');
 const telegramBot = require('./notifications/telegramBot');
 const KEYWORD_MATRIX = require('./core/keywordMatrix');
+const emailOutreachService = require('./core/emailOutreachService');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -46,6 +47,7 @@ app.get('/api/leads', (req, res) => {
       urgency: req.query.urgency || 'all',
       status: req.query.status || 'all',
       source: req.query.source || 'all',
+      channel: req.query.channel || 'all',
       timeRange: req.query.timeRange || '90d',
       sortBy: req.query.sortBy || 'clinical',
       hasEmail: req.query.hasEmail === 'true',
@@ -64,6 +66,57 @@ app.get('/api/leads/with-email', (req, res) => {
   try {
     const leads = database.getEmailLeads();
     res.json({ success: true, count: leads.length, leads });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 1.2 E-Posta Outreach Listesi — Son 3 ay, e-postası olan, hazır şablonlu
+app.get('/api/leads/email-outreach', (req, res) => {
+  try {
+    const language = req.query.lang || 'de';
+    const leads = database.getEmailLeads();
+    
+    // Her lead için outreach linklerini oluştur
+    const enrichedLeads = leads.map(lead => {
+      const outreach = emailOutreachService.buildOutreachLinks(lead, language);
+      return {
+        ...lead,
+        outreach_links: {
+          gmail: outreach.gmail,
+          outlook: outreach.outlook,
+          mailto: outreach.mailto
+        },
+        email_template: {
+          subject: outreach.template.subject,
+          body: outreach.template.body,
+          patientName: outreach.template.patientName
+        }
+      };
+    });
+
+    res.json({ success: true, count: enrichedLeads.length, leads: enrichedLeads });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 1.3 Yeni E-Posta Lead Taraması Başlat (SerpApi ile)
+app.post('/api/harvest-emails', async (req, res) => {
+  try {
+    // Harvest script'ini çalıştır ve sonuçları veritabanına ekle
+    const harvester = require('../scripts/harvest_patient_emails');
+    await harvester.run();
+
+    // Sonuçları veritabanına işle
+    const processor = require('../scripts/process_harvested_emails');
+
+    const stats = database.getStats();
+    res.json({
+      success: true,
+      message: 'E-posta taraması tamamlandı',
+      withEmailLeads: stats.withEmailLeads
+    });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -186,12 +239,46 @@ if (initialStats.totalLeads === 0) {
   }
 }
 
+// 🔄 10 DAKİKADA BİR KESİNTİSİZ ARKA PLAN TARAYICISI
+const AUTO_SCAN_INTERVAL_MS = 10 * 60 * 1000; // 10 Dakika
+
+async function runPeriodicScan() {
+  const nowStr = new Date().toLocaleTimeString('tr-TR');
+  console.log(`\n⏰ [${nowStr}] 10 Dakikalık Otomatik Hasta Arama Döngüsü Başlatıldı...`);
+  try {
+    const result = await scannerService.runFullScan({ includeSimulation: false });
+    console.log(`✅ [Otomatik Tarama - ${nowStr}]: Tamamlandı. Taranan: ${result.totalDiscovered || 0}, Yeni Eklenen: ${result.newLeadsSaved || 0}`);
+  } catch (err) {
+    console.warn(`⚠️ [Otomatik Tarama Hatası]:`, err.message);
+  }
+}
+
+const continuousPatientHunter = require('./scrapers/continuousPatientHunter');
+
+function startAutoScanner() {
+  console.log('🔄 [Otomatik Tarayıcı] 10 dakikada bir kesintisiz arka plan tarama motoru aktif edildi.');
+  
+  // 1. Genel döngü (10 saniye sonra ve 10 dakikada bir)
+  setTimeout(runPeriodicScan, 10000);
+  setInterval(runPeriodicScan, AUTO_SCAN_INTERVAL_MS);
+
+  // 2. Durmaksızın Canlı Hasta Avcısı (Son 24 saat ve 7 gün öncelikli, 45 sn döngülü)
+  setTimeout(() => {
+    continuousPatientHunter.start();
+  }, 15000);
+}
+
 app.listen(PORT, () => {
   console.log(`
 ╔══════════════════════════════════════════════════════════════════════╗
 ║  🦷 DENTLEAD RADAR - DİŞ KLİNİĞİ MÜŞTERİ BULMA OTOMASYONU           ║
 ║  🚀 Web Yönetim Paneli: http://localhost:${PORT}                       ║
-║  📡 Durum: Aktif ve Dinlemede                                       ║
+║  🔄 Durmaksızın Canlı Hasta Arama Motoru: AKTİF (7/24)              ║
+║  ⏱️ Öncelik Sıralaması: 1. Son 24 Saat, 2. Son 7 Gün, 3. Son 30 Gün  ║
+║  🛡️ AI Denetim: Gemini 3.6 Flash (Sadece Gerçek Hasta Niyeti)        ║
 ╚══════════════════════════════════════════════════════════════════════╝
   `);
+  
+  // Otomatik tarama motorunu başlat
+  startAutoScanner();
 });

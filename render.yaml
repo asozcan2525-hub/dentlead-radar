@@ -9,3 +9,11 @@ services:
     envVars:
       - key: PORT
         value: 3000
+      - key: NODE_VERSION
+        value: 22
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: SERPAPI_KEY
+        sync: false
+      - key: RAPIDAPI_KEY
+        sync: false

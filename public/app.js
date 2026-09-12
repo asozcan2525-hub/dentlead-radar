@@ -5,6 +5,7 @@
 let state = {
   leads: [],
   filters: {
+    channel: 'all',
     category: 'all',
     urgency: 'all',
     source: 'all',
@@ -60,9 +61,39 @@ document.addEventListener('DOMContentLoaded', () => {
   loadConfig();
   fetchStats();
   fetchLeads();
+
+  // 🔄 Canlı Arka Plan Senkronizasyonu: Her 30 saniyede bir sayaçları ve listeyi otomatik güncelle
+  setInterval(() => {
+    fetchStats();
+    fetchLeads();
+  }, 30000);
 });
 
 function initEventListeners() {
+  // 🧭 Kanal Sekmeleri (All, Instagram, Facebook, Forumlar, Email)
+  document.querySelectorAll('.channel-tab-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      document.querySelectorAll('.channel-tab-btn').forEach(b => b.classList.remove('active'));
+      const targetBtn = e.currentTarget;
+      targetBtn.classList.add('active');
+      const channel = targetBtn.dataset.channel || 'all';
+      state.filters.channel = channel;
+
+      const labelEl = document.getElementById('channel-active-status');
+      if (labelEl) {
+        const titles = {
+          all: 'Tüm Kaynaklar (Genel Havuz)',
+          instagram: '📸 Instagram / Rakip Reklam Yorumları',
+          facebook: '👥 Facebook Hasta Grupları',
+          forums: '💬 Sağlık Forumları & Reddit',
+          email: '📧 Doğrulanmış E-Postalı Hastalar'
+        };
+        labelEl.innerHTML = `Şu an: <strong>${titles[channel] || channel}</strong> gösteriliyor`;
+      }
+      fetchLeads();
+    });
+  });
+
   // Kategori Filtre Pill'leri
   document.querySelectorAll('#category-filter-pills .pill').forEach(pill => {
     pill.addEventListener('click', (e) => {
@@ -164,6 +195,7 @@ function initEventListeners() {
 async function fetchLeads() {
   try {
     const params = new URLSearchParams({
+      channel: state.filters.channel || 'all',
       category: state.filters.category,
       urgency: state.filters.urgency,
       source: state.filters.source,
@@ -198,6 +230,20 @@ async function fetchStats() {
       statContacted.textContent = s.contactedLeads || 0;
       if (statEmails) statEmails.textContent = (s.withEmailLeads || 0).toLocaleString();
       if (headerEmailCount) headerEmailCount.textContent = (s.withEmailLeads || 0).toLocaleString();
+
+      // Kanal Rozet Sayıları
+      if (s.channels) {
+        const bAll = document.getElementById('badge-chan-all');
+        const bIg = document.getElementById('badge-chan-instagram');
+        const bFb = document.getElementById('badge-chan-facebook');
+        const bFor = document.getElementById('badge-chan-forums');
+        const bMail = document.getElementById('badge-chan-email');
+        if (bAll) bAll.textContent = (s.channels.all || 0).toLocaleString();
+        if (bIg) bIg.textContent = (s.channels.instagram || 0).toLocaleString();
+        if (bFb) bFb.textContent = (s.channels.facebook || 0).toLocaleString();
+        if (bFor) bFor.textContent = (s.channels.forums || 0).toLocaleString();
+        if (bMail) bMail.textContent = (s.channels.email || 0).toLocaleString();
+      }
 
       let implantCount = 0;
       let aestheticCount = 0;
@@ -283,12 +329,16 @@ function createLeadCardHtml(lead) {
   };
 
   const sourceDetails = {
-    gutefrage: { icon: '❓', name: 'Gutefrage.net', class: 'badge-gutefrage' },
-    reddit: { icon: '🤖', name: 'Reddit DACH', class: 'badge-reddit' },
-    twitter: { icon: '🐦', name: 'Twitter DE', class: 'badge-twitter' },
-    forum: { icon: '💬', name: 'Med1 / Forum', class: 'badge-forum' },
-    google: { icon: '🔍', name: 'Google SERP', class: 'badge-google' }
-  }[lead.source] || { icon: '🌐', name: lead.source, class: 'badge-forum' };
+    instagram: { icon: '📸', name: 'Instagram Rakip Reklamı', class: 'badge-instagram', channelLabel: 'Instagram Reels / Reklam Yorumu' },
+    facebook: { icon: '👥', name: 'Facebook Hasta Grubu', class: 'badge-facebook', channelLabel: 'Facebook Diş Tedavisi Grubu' },
+    gutefrage: { icon: '❓', name: 'Gutefrage.net', class: 'badge-gutefrage', channelLabel: 'Almanya Soru-Cevap Portalı' },
+    'gutefrage.net': { icon: '❓', name: 'Gutefrage.net', class: 'badge-gutefrage', channelLabel: 'Almanya Soru-Cevap Portalı' },
+    reddit: { icon: '🤖', name: 'Reddit DACH', class: 'badge-reddit', channelLabel: 'Reddit Sağlık Topluluğu' },
+    tripadvisor: { icon: '🦉', name: 'TripAdvisor Forum', class: 'badge-tripadvisor', channelLabel: 'TripAdvisor Forumu' },
+    twitter: { icon: '🐦', name: 'Twitter DE', class: 'badge-twitter', channelLabel: 'Twitter/X' },
+    forum: { icon: '💬', name: 'Med1 / Forum', class: 'badge-forum', channelLabel: 'Almanya Diş Forumu' },
+    google: { icon: '🔍', name: 'Google SERP', class: 'badge-google', channelLabel: 'Google Arama Sonucu' }
+  }[lead.source] || { icon: '🌐', name: lead.source || 'Web Kaynağı', class: 'badge-forum', channelLabel: 'Online Topluluk' };
 
   const treatmentNames = {
     implant: '🦷 Zahnimplantate / All-on-4',
@@ -305,8 +355,132 @@ function createLeadCardHtml(lead) {
   if (lead.location && lead.location.includes('Avusturya')) flag = '🇦🇹';
   else if (lead.location && lead.location.includes('İsviçre')) flag = '🇨🇭';
 
+  // 📅 Kesin Türkçe Tarih ve Gün Hesaplama
+  const postDate = new Date(lead.created_at);
+  const isValidDate = !isNaN(postDate.getTime());
+  const now = new Date();
+  const diffDays = isValidDate ? Math.max(0, Math.floor((now - postDate) / (1000 * 60 * 60 * 24))) : 999;
+
+  const turkishMonths = [
+    'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
+    'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
+  ];
+
+  let exactDateStr = 'Tarih Belirtilmemiş';
+  let daysAgoStr = '';
+  if (isValidDate) {
+    const day = postDate.getDate();
+    const month = turkishMonths[postDate.getMonth()];
+    const year = postDate.getFullYear();
+    if (diffDays === 0) daysAgoStr = 'Bugün';
+    else if (diffDays === 1) daysAgoStr = 'Dün';
+    else if (diffDays < 30) daysAgoStr = `${diffDays} gün önce`;
+    else {
+      const m = Math.floor(diffDays / 30);
+      daysAgoStr = `${m} ay önce`;
+    }
+    exactDateStr = `📅 ${day} ${month} ${year} (${daysAgoStr})`;
+  }
+
+  // 🎯 Kanal Bannerı (Hangi kanaldan geldiği çok net görünür)
+  let channelBannerHtml = '';
+  if (lead.source === 'instagram') {
+    channelBannerHtml = `
+      <div class="card-channel-banner banner-instagram">
+        <span class="banner-icon">📸</span>
+        <div class="banner-content">
+          <strong>INSTAGRAM RAKİP REKLAMI YORUMU</strong>
+          <span>Rakip klinik tanıtım videosu altına doğrudan fiyat/tedavi sorusu sordu</span>
+        </div>
+      </div>
+    `;
+  } else if (lead.source === 'facebook') {
+    channelBannerHtml = `
+      <div class="card-channel-banner banner-facebook">
+        <span class="banner-icon">👥</span>
+        <div class="banner-content">
+          <strong>FACEBOOK DİŞ GRUBU GÖNDERİSİ</strong>
+          <span>Turkey Teeth / Dental Travel hasta topluluğunda klinik arayışı</span>
+        </div>
+      </div>
+    `;
+  } else if (lead.email) {
+    channelBannerHtml = `
+      <div class="card-channel-banner banner-email">
+        <span class="banner-icon">📧</span>
+        <div class="banner-content">
+          <strong>DOĞRULANMIŞ HASTA E-POSTASI</strong>
+          <span>Doğrudan Gmail veya Outlook ile 1 tıkla teklif gönderilebilir</span>
+        </div>
+      </div>
+    `;
+  } else {
+    channelBannerHtml = `
+      <div class="card-channel-banner banner-forums">
+        <span class="banner-icon">${sourceDetails.icon}</span>
+        <div class="banner-content">
+          <strong>${sourceDetails.name.toUpperCase()}</strong>
+          <span>${sourceDetails.channelLabel}</span>
+        </div>
+      </div>
+    `;
+  }
+
+  // 🔗 Kanala Özel Aksiyon Butonları
+  let channelActionButtons = '';
+  if (lead.source === 'instagram') {
+    const igDmUrl = lead.author_url || `https://www.instagram.com/${escapeHtml(lead.author)}/`;
+    channelActionButtons = `
+      <a href="${igDmUrl}" target="_blank" rel="noopener noreferrer" class="btn-channel-action btn-instagram-dm" 
+         title="Instagram'da kullanıcı profiline git veya DM gönder">
+        💬 Instagram DM Gönder ↗
+      </a>
+      <a href="${escapeHtml(lead.url || '#')}" target="_blank" rel="noopener noreferrer" class="btn-verify-source-main"
+         title="Rakip kliniğin videosunu ve hastanın yorumunu incele">
+        🔗 Rakip Gönderisini Aç ↗
+      </a>
+    `;
+  } else if (lead.source === 'facebook') {
+    const fbProfileUrl = lead.author_url || lead.url || 'https://www.facebook.com';
+    channelActionButtons = `
+      <a href="${fbProfileUrl}" target="_blank" rel="noopener noreferrer" class="btn-channel-action btn-facebook-msg"
+         title="Hastanın Facebook profiline git ve Messenger ile mesaj at">
+        👤 Facebook Profil & Mesaj ↗
+      </a>
+      <a href="${escapeHtml(lead.url || '#')}" target="_blank" rel="noopener noreferrer" class="btn-verify-source-main"
+         title="Facebook gönderisini ve paylaşılan soruyu/yorumları incele">
+        🔗 Gönderiye Git (Kanıtı Aç) ↗
+      </a>
+    `;
+  } else {
+    // Forumlar & Diğerleri
+    channelActionButtons = `
+      ${lead.author_url && lead.author_url !== '#' && lead.author_url !== lead.url ? `
+        <a href="${escapeHtml(lead.author_url)}" target="_blank" rel="noopener noreferrer" class="btn-link-author" 
+           title="Hastanın kullanıcı profiline git / Özel mesaj (DM) gönder">
+          👤 Profil & DM
+        </a>
+      ` : ''}
+
+      ${lead.email ? `
+        <a href="https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(lead.email)}&su=${encodeURIComponent('Kostenlose Beratung & Kostenvoranschlag für Ihre Zahnbehandlung')}&body=${encodeURIComponent(lead.suggested_reply || '')}" 
+           target="_blank" rel="noopener noreferrer" class="btn-link-email-direct" title="Hastaya doğrudan Gmail ile hazır Almanca teklifi gönder">
+          ✉️ Gmail ile Yaz
+        </a>
+      ` : ''}
+
+      <a href="${escapeHtml(lead.url || '#')}" target="_blank" rel="noopener noreferrer" class="btn-verify-source-main"
+         title="Hastanın bu soruyu sorduğu kanıt web sayfasına git">
+        🔗 Kanıt Linkini Aç (Soruya Git) ↗
+      </a>
+    `;
+  }
+
   return `
     <div class="lead-card ${cardBorderClass}" id="lead-card-${lead.id}">
+      <!-- Kanal Tanım Şeridi -->
+      ${channelBannerHtml}
+
       <div class="card-header">
         <div class="author-meta">
           <div class="source-badge-icon ${sourceDetails.class}" title="${sourceDetails.name}">
@@ -314,7 +488,7 @@ function createLeadCardHtml(lead) {
           </div>
           <div>
             <div class="author-name">@${escapeHtml(lead.author || 'Patient')}</div>
-            <div class="post-time">${formatTimeAgo(lead.created_at)} • ${sourceDetails.name}</div>
+            <div class="post-time">${exactDateStr} • ${sourceDetails.name}</div>
           </div>
         </div>
 
@@ -332,14 +506,32 @@ function createLeadCardHtml(lead) {
         "${escapeHtml(lead.content)}"
       </div>
 
+      <!-- 📌 Neye Göre Bulundu (Kanıt & Teşhis) -->
+      <div class="lead-evidence-box">
+        <div class="evidence-header">
+          <span class="evidence-badge-tag">📌 KANIT & TEŞHİS DETAYI</span>
+          <span class="evidence-source-tag">${sourceDetails.icon} ${sourceDetails.name}</span>
+        </div>
+        <div class="evidence-reason">
+          <strong>Neye Göre Bulundu:</strong> ${escapeHtml(lead.sentiment || 'Hasta doğrudan platformda diş sorunu/maliyet araştırması paylaşmış ve klinik tekliflerine açık olduğunu belirtmiştir.')}
+        </div>
+        <div class="evidence-footer">
+          <span class="evidence-time">${exactDateStr}</span>
+          ${lead.email ? `
+            <span class="evidence-email-pill" title="Bu hastanın doğrulanmış e-postası mevcuttur">
+              ✉️ <strong>E-Posta:</strong> ${escapeHtml(lead.email)}
+            </span>
+          ` : ''}
+        </div>
+      </div>
+
       <div class="card-tags">
-        <!-- 🎯 3 Ay Tazelik Rozeti -->
+        <!-- 🎯 3 Ay Tazelik Rozeti (Kesin Gün Hesabı) -->
         ${(() => {
-          const postTime = new Date(lead.created_at).getTime();
-          const diffDays = Math.max(0, Math.floor((Date.now() - postTime) / (1000 * 60 * 60 * 24)));
-          if (diffDays <= 7) return `<span class="tag-item" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3);">🟢 Son 7 Gün (Çok Sıcak)</span>`;
-          if (diffDays <= 30) return `<span class="tag-item" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3);">🟡 Son 30 Gün (Aktif)</span>`;
-          return `<span class="tag-item" style="background: rgba(14, 165, 233, 0.15); color: #38bdf8; border: 1px solid rgba(14, 165, 233, 0.3);">🔵 Son 3 Ay (Güncel)</span>`;
+          if (diffDays <= 7) return `<span class="tag-item tag-fresh-super">🟢 Son 7 Gün (${daysAgoStr})</span>`;
+          if (diffDays <= 30) return `<span class="tag-item tag-fresh-active">🟡 Son 30 Gün (${daysAgoStr})</span>`;
+          if (diffDays <= 90) return `<span class="tag-item tag-fresh-normal">🔵 Son 3 Ay (${daysAgoStr})</span>`;
+          return `<span class="tag-item tag-fresh-archive">⚪ Arşiv Gönderi (${daysAgoStr})</span>`;
         })()}
         <span class="tag-item tag-treatment">
           ${treatmentNames[lead.treatment_category] || lead.treatment_category}
@@ -373,7 +565,7 @@ function createLeadCardHtml(lead) {
           </button>
           <button class="btn-status ${lead.status === 'appointment' ? 'active-status' : ''}" 
                   onclick="changeLeadStatus(${lead.id}, 'appointment')">
-            📅 Randevu / Rezervasyon
+            📅 Randevu
           </button>
           <button class="btn-status ${lead.status === 'ignored' ? 'active-status' : ''}" 
                   onclick="changeLeadStatus(${lead.id}, 'ignored')">
@@ -381,20 +573,8 @@ function createLeadCardHtml(lead) {
           </button>
         </div>
 
-        <div class="action-links-group" style="display: flex; gap: 8px; align-items: center;">
-          ${lead.author_url && lead.author_url !== '#' && lead.author_url !== lead.url ? `
-            <a href="${escapeHtml(lead.author_url)}" target="_blank" rel="noopener noreferrer" class="btn-link-author" 
-               style="display: inline-flex; align-items: center; gap: 5px; padding: 8px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; color: #38bdf8; background: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.3); text-decoration: none; transition: all 0.2s;"
-               title="Hastanın kullanıcı profiline git / Özel mesaj (DM) gönder">
-              👤 Profili & DM
-            </a>
-          ` : ''}
-
-          <a href="${escapeHtml(lead.url || '#')}" target="_blank" rel="noopener noreferrer" class="btn-link-out"
-             style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; text-decoration: none;"
-             title="Orijinal soru başlığına git ve hazırlanan Almanca klinik teklifini yapıştır">
-            💬 Soruya Git & Yanıtla &rarr;
-          </a>
+        <div class="action-links-group">
+          ${channelActionButtons}
         </div>
       </div>
     </div>
@@ -612,15 +792,29 @@ function showToast(message, type = 'success') {
 }
 
 function formatTimeAgo(dateString) {
-  if (!dateString) return 'Gerade eben';
-  const now = new Date();
+  if (!dateString) return 'Tarih Belirtilmemiş';
   const past = new Date(dateString);
-  const diffSec = Math.floor((now - past) / 1000);
+  if (isNaN(past.getTime())) return dateString;
+  const now = new Date();
+  const diffDays = Math.max(0, Math.floor((now - past) / (1000 * 60 * 60 * 24)));
 
-  if (diffSec < 60) return 'Gerade eben';
-  if (diffSec < 3600) return `vor ${Math.floor(diffSec / 60)} Min.`;
-  if (diffSec < 86400) return `vor ${Math.floor(diffSec / 3600)} Std.`;
-  return `vor ${Math.floor(diffSec / 86400)} Tagen`;
+  const turkishMonths = [
+    'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
+    'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
+  ];
+  const day = past.getDate();
+  const month = turkishMonths[past.getMonth()];
+  const year = past.getFullYear();
+
+  let relative = '';
+  if (diffDays === 0) relative = 'Bugün';
+  else if (diffDays === 1) relative = 'Dün';
+  else if (diffDays < 30) relative = `${diffDays} gün önce`;
+  else {
+    const m = Math.floor(diffDays / 30);
+    relative = `${m} ay önce`;
+  }
+  return `${day} ${month} ${year} (${relative})`;
 }
 
 function escapeHtml(str) {
@@ -634,10 +828,32 @@ function escapeHtml(str) {
 }
 
 /* ==========================================================================
-   📧 MAİLLERİ BULUNANLAR ÖZEL PENCERE FONKSİYONLARI
+   📧 E-POSTA OUTREACH MERKEZİ FONKSİYONLARI (GELİŞTİRİLMİŞ)
    ========================================================================== */
 
 let emailLeadsCache = [];
+let outreachLanguage = 'de';
+
+// Outreach merkezi açılınca ek event listener'ları bağla
+function initOutreachListeners() {
+  const btnHarvest = document.getElementById('btn-harvest-emails');
+  if (btnHarvest) {
+    btnHarvest.addEventListener('click', triggerEmailHarvest);
+  }
+
+  const langSelect = document.getElementById('outreach-lang-select');
+  if (langSelect) {
+    langSelect.addEventListener('change', (e) => {
+      outreachLanguage = e.target.value;
+      openEmailModal(); // Dil değişince yeniden yükle
+    });
+  }
+}
+
+// Sayfa yüklenince ek listener'ları bağla
+document.addEventListener('DOMContentLoaded', () => {
+  initOutreachListeners();
+});
 
 async function openEmailModal() {
   if (!emailLeadsModal) return;
@@ -647,13 +863,13 @@ async function openEmailModal() {
     emailLeadsContainer.innerHTML = `
       <div class="empty-state" style="grid-column: 1 / -1;">
         <div class="spinner-large"></div>
-        <p>E-postası bulunan müşteri adayları yükleniyor...</p>
+        <p>E-postası bulunan hasta adayları ve outreach şablonları yükleniyor...</p>
       </div>
     `;
   }
 
   try {
-    const res = await fetch('/api/leads/with-email');
+    const res = await fetch(`/api/leads/email-outreach?lang=${outreachLanguage}`);
     const data = await res.json();
     if (data.success) {
       emailLeadsCache = data.leads || [];
@@ -687,6 +903,37 @@ function filterEmailCards(query) {
   renderEmailCards(filtered);
 }
 
+// 🔍 SerpApi ile yeni e-posta hastaları tara
+async function triggerEmailHarvest() {
+  const harvestBtn = document.getElementById('btn-harvest-emails');
+  const harvestText = document.getElementById('harvest-btn-text');
+
+  if (harvestBtn) harvestBtn.disabled = true;
+  if (harvestText) harvestText.textContent = '⏳ Taranıyor...';
+
+  showToast('Son 3 ayda e-posta bırakan yeni diş hastaları taranıyor... Bu birkaç dakika sürebilir.', 'success');
+
+  try {
+    const res = await fetch('/api/harvest-emails', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(`✅ E-posta taraması tamamlandı! Toplam ${data.withEmailLeads} e-posta lead bulundu.`, 'success');
+      await openEmailModal(); // Listeyi yenile
+      await fetchStats();
+    } else {
+      showToast('Tarama hatası: ' + (data.error || 'Bilinmeyen hata'), 'error');
+    }
+  } catch (err) {
+    showToast('E-posta tarama isteği gönderilemedi.', 'error');
+  } finally {
+    if (harvestBtn) harvestBtn.disabled = false;
+    if (harvestText) harvestText.textContent = '🔍 Yeni Hasta E-Postası Tara';
+  }
+}
+
 function renderEmailCards(leads) {
   if (!emailLeadsContainer) return;
 
@@ -695,6 +942,7 @@ function renderEmailCards(leads) {
       <div class="empty-state" style="grid-column: 1 / -1;">
         <span style="font-size: 36px;">📭</span>
         <p>Eşleşen e-posta adresi bulunamadı.</p>
+        <p style="font-size: 12px; opacity: 0.7;">Yeni hastalar bulmak için yukarıdaki "🔍 Yeni Hasta E-Postası Tara" butonunu kullanabilirsiniz.</p>
       </div>
     `;
     return;
@@ -706,7 +954,16 @@ function renderEmailCards(leads) {
     zirconium_aesthetic: '✨ Veneers & Zirkonkronen',
     orthodontics_invisalign: '📐 Invisalign & Aligner',
     emergency_toothache: '🚨 Akuter Zahnschmerz & Notfall',
+    root_canal: '🩺 Wurzelbehandlung',
+    wisdom_tooth: '⚡ Weisheitszahn OP',
     general_checkup: '🔍 Zweitmeinung & Heil- und Kostenplan'
+  };
+
+  const urgencyColors = {
+    critical: { bg: 'rgba(239, 68, 68, 0.15)', color: '#f87171', border: 'rgba(239, 68, 68, 0.4)', label: '🚨 KRİTİK' },
+    high: { bg: 'rgba(251, 191, 36, 0.15)', color: '#fbbf24', border: 'rgba(251, 191, 36, 0.4)', label: '⚡ YÜKSEK' },
+    medium: { bg: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', border: 'rgba(56, 189, 248, 0.4)', label: '📌 ORTA' },
+    low: { bg: 'rgba(148, 163, 184, 0.15)', color: '#94a3b8', border: 'rgba(148, 163, 184, 0.3)', label: 'ℹ️ BİLGİ' }
   };
 
   const cardsHtml = leads.map(l => {
@@ -721,32 +978,24 @@ function renderEmailCards(leads) {
     const cleanContent = escapeHtml(l.content || '');
     const cleanUrl = escapeHtml(l.url || '#');
     const cleanCategory = treatmentLabels[l.treatment_category] || l.treatment_category;
+    const urgency = urgencyColors[l.urgency] || urgencyColors.medium;
 
-    // Tek tıkla Almanca e-posta şablonu (mailto)
-    const emailSubject = encodeURIComponent(`Unverbindliche Beratung & Kostenangebot zu Ihrer Zahnbehandlung - DentArt Istanbul`);
-    const emailBody = encodeURIComponent(
-`Sehr geehrte/r Frau/Herr ${l.author},
+    // Outreach linkleri (API'den gelen hazır linkler)
+    const gmailLink = l.outreach_links?.gmail || '#';
+    const outlookLink = l.outreach_links?.outlook || '#';
+    const mailtoLink = l.outreach_links?.mailto || `mailto:${cleanEmail}`;
 
-wir haben Ihre Anfrage bezüglich "${l.treatment_category}" aufmerksam gelesen.
-
-Als TÜV- und CE-zertifizierte Zahnklinik in Istanbul bieten wir deutschsprachigen Patienten:
-• Bis zu 70% Ersparnis bei CE- und TÜV-zertifizierten Markenimplantaten (Straumann / Nobel Biocare)
-• Kostenlose digitale Vorab-Analyse Ihres Heil- und Kostenplans / Ihrer Röntgenbilder
-• All-Inclusive Pakete inklusive 5-Sterne Hotel und privatem VIP-Shuttle-Service
-• Vollständige deutschsprachige Chefarzt- und Patientenbetreuung
-
-Gerne erstellen wir Ihnen innerhalb von 24 Stunden einen unverbindlichen Behandlungs- und Kostenplan.
-
-Mit freundlichen Grüßen,
-DentArt International Patient Care Team
-WhatsApp: +90 555 123 4567
-Web: www.dentart-international.com`
-    );
-
-    const mailtoLink = `mailto:${cleanEmail}?subject=${emailSubject}&body=${emailBody}`;
+    // Status badge
+    const statusBadges = {
+      new: { label: '🆕 Yeni', class: 'status-new' },
+      contacted: { label: '📩 İletişimde', class: 'status-contacted' },
+      appointment: { label: '📅 Randevu', class: 'status-appointment' },
+      ignored: { label: '❌ Yoksayıldı', class: 'status-ignored' }
+    };
+    const currentStatus = statusBadges[l.status] || statusBadges.new;
 
     return `
-      <div class="email-lead-card" id="email-card-${l.id}">
+      <div class="email-lead-card outreach-card ${l.status === 'contacted' ? 'card-contacted' : ''} ${l.status === 'appointment' ? 'card-appointment' : ''}" id="email-card-${l.id}">
         <div class="email-card-top">
           <div class="email-author-wrap">
             <div class="email-author-avatar">${initial}</div>
@@ -758,42 +1007,129 @@ Web: www.dentart-international.com`
               </div>
             </div>
           </div>
-          <span class="email-country-flag" title="${escapeHtml(l.location || '')}">${flag}</span>
+          <div class="outreach-card-badges">
+            <span class="outreach-urgency-badge" style="background: ${urgency.bg}; color: ${urgency.color}; border: 1px solid ${urgency.border};">
+              ${urgency.label}
+            </span>
+            <span class="email-country-flag" title="${escapeHtml(l.location || '')}">${flag}</span>
+          </div>
         </div>
 
-        <div class="email-address-bar">
+        <div class="email-address-bar outreach-email-bar">
           <span class="email-address-text">${cleanEmail}</span>
-          <button type="button" class="btn-copy-email" onclick="copyEmailText('${cleanEmail}')" title="E-Postayı Kopyala">
-            📋 Kopyala
-          </button>
+          <div class="email-bar-actions">
+            <button type="button" class="btn-copy-email" onclick="copyEmailText('${cleanEmail}')" title="E-Postayı Kopyala">
+              📋
+            </button>
+            <span class="outreach-status-badge ${currentStatus.class}">${currentStatus.label}</span>
+          </div>
         </div>
 
         <div class="email-treatment-tag">
           ${cleanCategory}
         </div>
 
+        <!-- 📌 Neye Göre Bulundu & E-Posta Kanıtı -->
+        <div class="outreach-evidence-box">
+          <div class="outreach-evidence-header">
+            <span class="outreach-evidence-tag">📌 KANIT GEREKÇESİ</span>
+            <span class="outreach-evidence-platform">${escapeHtml(l.source || 'web').toUpperCase()}</span>
+          </div>
+          <div class="outreach-evidence-text">
+            <strong>Neye Göre Bulundu:</strong> ${escapeHtml(l.sentiment || 'Hasta doğrudan diş tedavisi aradığını ve iletişim kurulmasını istediğini belirterek e-postasını paylaşmıştır.')}
+          </div>
+          <div class="outreach-evidence-date">
+            📅 Paylaşım: <strong>${formatTimeAgo(l.created_at)}</strong> (${new Date(l.created_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })})
+          </div>
+        </div>
+
         <div class="email-card-snippet" title="${cleanContent}">
           "${cleanContent}"
         </div>
 
-        <div class="email-card-actions">
-          <a href="${mailtoLink}" class="btn-send-email-direct" target="_blank" rel="noopener noreferrer">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22 6 12 13 2 6"/></svg>
-            <span>✉️ Tek Tıkla E-Posta Gönder</span>
-          </a>
+        <div class="outreach-score-bar">
+          <div class="outreach-score-fill" style="width: ${Math.min(l.ai_score || 80, 100)}%;"></div>
+          <span class="outreach-score-label">%${l.ai_score || 80} Eşleşme Skoru</span>
+        </div>
 
-          <div class="email-card-secondary-links">
-            <a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" class="email-post-link">
-              <span>🔗 Orijinal Gönderiyi Gör &rarr;</span>
+        <div class="outreach-card-actions">
+          <div class="outreach-send-buttons">
+            <a href="${gmailLink}" class="btn-gmail-send" target="_blank" rel="noopener noreferrer" onclick="markAsContacted(${l.id})" title="Gmail'de hazır şablonla aç">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22 6 12 13 2 6"/></svg>
+              <span>Gmail ile Yaz</span>
             </a>
-            <span style="font-size: 11px; color: #34d399; font-weight: 600;">%${l.ai_score || 95} Eşleşme</span>
+            <a href="${outlookLink}" class="btn-outlook-send" target="_blank" rel="noopener noreferrer" onclick="markAsContacted(${l.id})" title="Outlook'ta hazır şablonla aç">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2" ry="2"/><path d="M22 7l-10 7L2 7"/></svg>
+              <span>Outlook</span>
+            </a>
+            <a href="${mailtoLink}" class="btn-mailto-send" target="_blank" rel="noopener noreferrer" title="Varsayılan mail programında aç">
+              ✉️
+            </a>
           </div>
+
+          <div class="outreach-status-buttons">
+            <button class="btn-outreach-status ${l.status === 'contacted' ? 'active-status' : ''}" 
+                    onclick="changeOutreachStatus(${l.id}, 'contacted')" title="İletişime Geçildi">
+              📩
+            </button>
+            <button class="btn-outreach-status ${l.status === 'appointment' ? 'active-status' : ''}" 
+                    onclick="changeOutreachStatus(${l.id}, 'appointment')" title="Randevu Alındı">
+              📅
+            </button>
+            <button class="btn-outreach-status ${l.status === 'ignored' ? 'active-status' : ''}" 
+                    onclick="changeOutreachStatus(${l.id}, 'ignored')" title="Yoksay">
+              ❌
+            </button>
+          </div>
+        </div>
+
+        <!-- Orijinal Kanıt Linki Aç Butonu -->
+        <div class="outreach-verify-link-row">
+          <a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" class="btn-outreach-source-link" title="Hastanın yazdığı bu orijinal gönderiyi yeni sekmede aç">
+            🔗 Kanıt Linkini Aç (Orijinal Gönderiye Git) ↗
+          </a>
         </div>
       </div>
     `;
   }).join('');
 
   emailLeadsContainer.innerHTML = cardsHtml;
+}
+
+// Lead durumunu güncelle ve kartı güncelle
+async function changeOutreachStatus(id, newStatus) {
+  try {
+    const res = await fetch(`/api/leads/${id}/status`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: newStatus })
+    });
+    const data = await res.json();
+    if (data.success) {
+      // Cache'deki durumu güncelle
+      const lead = emailLeadsCache.find(l => l.id === id);
+      if (lead) lead.status = newStatus;
+
+      // Kartı görsel olarak güncelle
+      const card = document.getElementById(`email-card-${id}`);
+      if (card) {
+        card.classList.remove('card-contacted', 'card-appointment');
+        if (newStatus === 'contacted') card.classList.add('card-contacted');
+        if (newStatus === 'appointment') card.classList.add('card-appointment');
+      }
+
+      const statusLabels = { contacted: '📩 İletişimde', appointment: '📅 Randevu', ignored: '❌ Yoksayıldı', new: '🆕 Yeni' };
+      showToast(`Hasta durumu güncellendi: ${statusLabels[newStatus] || newStatus}`, 'success');
+      fetchStats();
+    }
+  } catch (e) {
+    showToast('Durum güncellenirken hata oluştu.', 'error');
+  }
+}
+
+// Gmail'e tıklayınca otomatik olarak "İletişime Geçildi" yap
+function markAsContacted(id) {
+  changeOutreachStatus(id, 'contacted');
 }
 
 function copyEmailText(email) {
@@ -818,3 +1154,4 @@ function copyAllEmails() {
     showToast(`Kopyalandı: ${emailList.length} e-posta`, 'success');
   });
 }
+

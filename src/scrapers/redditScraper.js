@@ -36,6 +36,11 @@ const redditScraper = {
             const post = item.data;
             if (!post) continue;
 
+            // 🛑 Arşivlenmiş, kilitli veya silinmiş yazar gönderilerini atla
+            if (!post.author || post.author === '[deleted]' || post.locked || post.archived) {
+              continue;
+            }
+
             // 🎯 3 Aydan (90 gün) eski gönderileri kesinlikle alma
             const ninetyDaysMs = 90 * 24 * 60 * 60 * 1000;
             if (Date.now() - (post.created_utc * 1000) > ninetyDaysMs) {

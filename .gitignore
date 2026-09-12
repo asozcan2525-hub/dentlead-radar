@@ -2,4 +2,12 @@ node_modules/
 .env
 .DS_Store
 *.log
-
+scratch_*
+temp_*
+data/temp_*
+test_*
+scripts_test_*
+scripts_gather_*
+scripts_harvest_*
+scripts/test_*
+scripts/check_*

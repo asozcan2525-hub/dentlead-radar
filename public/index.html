@@ -139,6 +139,64 @@
       </div>
     </section>
 
+    <!-- 🧭 Kaynak & Kanal Gezinti Sekmeleri (Kanal Sayfaları) -->
+    <section class="channel-tabs-container glass-panel">
+      <div class="channel-tabs-header">
+        <div class="channel-tabs-title-wrap">
+          <span class="channel-tabs-indicator"></span>
+          <h2 class="channel-tabs-heading">🎯 Müşteri Kaynak Kanalı:</h2>
+          <span class="channel-tabs-sub">Müşterinin geldiği platforma göre filtreleyin</span>
+        </div>
+        <div class="channel-active-label" id="channel-active-status">Şu an: <strong>Tüm Kaynaklar</strong> gösteriliyor</div>
+      </div>
+      <div class="channel-tabs-list" id="channel-tabs">
+        <button class="channel-tab-btn active" data-channel="all">
+          <span class="channel-tab-icon">🌐</span>
+          <div class="channel-tab-info">
+            <span class="channel-tab-name">Tüm Kaynaklar</span>
+            <span class="channel-tab-desc">Genel hasta havuzu</span>
+          </div>
+          <span class="channel-tab-badge" id="badge-chan-all">187</span>
+        </button>
+
+        <button class="channel-tab-btn channel-tab-instagram" data-channel="instagram">
+          <span class="channel-tab-icon">📸</span>
+          <div class="channel-tab-info">
+            <span class="channel-tab-name">Instagram / Rakip Reklam Yorumları</span>
+            <span class="channel-tab-desc">Rakip klinik reels/post altından fiyat soranlar</span>
+          </div>
+          <span class="channel-tab-badge badge-glow-instagram" id="badge-chan-instagram">10</span>
+        </button>
+
+        <button class="channel-tab-btn channel-tab-facebook" data-channel="facebook">
+          <span class="channel-tab-icon">👥</span>
+          <div class="channel-tab-info">
+            <span class="channel-tab-name">Facebook Hasta Grupları</span>
+            <span class="channel-tab-desc">Turkey Teeth & Dental Travel grupları</span>
+          </div>
+          <span class="channel-tab-badge badge-glow-facebook" id="badge-chan-facebook">11</span>
+        </button>
+
+        <button class="channel-tab-btn channel-tab-forums" data-channel="forums">
+          <span class="channel-tab-icon">💬</span>
+          <div class="channel-tab-info">
+            <span class="channel-tab-name">Sağlık Forumları & Reddit</span>
+            <span class="channel-tab-desc">r/askdentists, r/Invisalign, Gutefrage</span>
+          </div>
+          <span class="channel-tab-badge badge-glow-forums" id="badge-chan-forums">166</span>
+        </button>
+
+        <button class="channel-tab-btn channel-tab-email" data-channel="email">
+          <span class="channel-tab-icon">📧</span>
+          <div class="channel-tab-info">
+            <span class="channel-tab-name">Doğrulanmış E-Postalılar</span>
+            <span class="channel-tab-desc">Gmail / Outlook ile hazır teklif gönder</span>
+          </div>
+          <span class="channel-tab-badge badge-glow-email" id="badge-chan-email">11</span>
+        </button>
+      </div>
+    </section>
+
     <!-- Filter & Search Toolbar -->
     <section class="toolbar-section glass-panel">
       <!-- Treatment Filter Pills -->
@@ -314,18 +372,22 @@
     </div>
   </div>
 
-  <!-- 📧 Mailleri Bulunanlar Özel Pencere (Modal) -->
+  <!-- 📧 E-Posta Outreach Merkezi (Geliştirilmiş Modal) -->
   <div id="email-leads-modal" class="modal-overlay hidden">
     <div class="modal-card glass-panel email-leads-modal-card">
       <div class="modal-header">
         <div class="modal-title-wrap">
           <div class="modal-icon email-icon-glow">📧</div>
           <div>
-            <h3>Mailleri Bulunan Müşteri Adayları (Doğrudan İletişim Havuzu)</h3>
-            <p>Facebook grupları, ikinci görüş forumları ve hasta topluluklarında e-posta paylaşan gerçek diş hastaları.</p>
+            <h3>E-Posta Outreach Merkezi — Doğrudan Hasta İletişimi</h3>
+            <p>Son 3 ayda diş sorunu yaşamış ve e-postasını paylaşmış gerçek hastaları burada listeleyip, tek tıkla Gmail/Outlook üzerinden ulaşabilirsiniz.</p>
           </div>
         </div>
         <div class="modal-header-actions">
+          <button id="btn-harvest-emails" class="btn btn-primary btn-sm" title="SerpApi ile son 3 ayda e-posta bırakan yeni hastaları tara">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+            <span id="harvest-btn-text">🔍 Yeni Hasta E-Postası Tara</span>
+          </button>
           <button id="btn-copy-all-emails" class="btn btn-secondary btn-sm" title="Tüm e-postaları panoya kopyala">
             <span>📋 Tüm Mailleri Kopyala</span>
           </button>
@@ -336,10 +398,19 @@
       <div class="email-modal-toolbar">
         <div class="search-box email-search-box">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="text" id="email-search-input" placeholder="Hasta adı, e-posta veya şikayet ile filtrele...">
+          <input type="text" id="email-search-input" placeholder="Hasta adı, e-posta, tedavi veya şehir ile filtrele...">
         </div>
-        <div class="email-stats-chip">
-          <span>Toplam Doğrulanmış E-Posta: <b id="email-modal-count">0</b></span>
+        <div class="outreach-toolbar-actions">
+          <div class="outreach-lang-switch">
+            <label>Şablon Dili:</label>
+            <select id="outreach-lang-select" class="select-dropdown select-sm">
+              <option value="de">🇩🇪 Deutsch (Almanca)</option>
+              <option value="en">🇬🇧 English (İngilizce)</option>
+            </select>
+          </div>
+          <div class="email-stats-chip">
+            <span>Toplam E-Posta Lead: <b id="email-modal-count">0</b></span>
+          </div>
         </div>
       </div>
 
@@ -354,7 +425,7 @@
 
       <div class="modal-footer email-modal-footer">
         <div class="email-footer-tip">
-          <span>💡 <b>Klinik Sunumu İpucu:</b> <i>"Tek Tıkla E-Posta Gönder"</i> butonuna bastığınızda, hastanın şikayetine özel hazırlanmış Almanca/İngilizce diş tedavisi teklif şablonu e-posta programınızda hazır olarak açılır.</span>
+          <span>💡 <b>Nasıl Çalışır:</b> <i>"Gmail ile Yaz"</i> butonuna tıklayınca, hastanın tedavi ihtiyacına özel hazırlanmış profesyonel Almanca/İngilizce şablon Gmail'de otomatik açılır. Sadece <b>Gönder</b>'e basmanız yeterli!</span>
         </div>
         <button id="btn-close-email-modal-footer" class="btn btn-secondary">Kapat</button>
       </div>
