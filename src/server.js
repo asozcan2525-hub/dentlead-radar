@@ -144,6 +144,33 @@ app.get('/api/stats', (req, res) => {
   }
 });
 
+// Doğrulanmış Canlı Hasta Veritabanını Eşitle (Admin & Bulut Senkronizasyonu)
+app.all('/api/sync-verified', (req, res) => {
+  try {
+    const seedPath = path.join(__dirname, '../data/verified_initial_leads.json');
+    if (fs.existsSync(seedPath)) {
+      const seedData = JSON.parse(fs.readFileSync(seedPath, 'utf8'));
+      let added = 0;
+      for (const lead of seedData) {
+        if (!database.isDuplicate(lead.source, lead.source_id)) {
+          database.addLead(lead);
+          added++;
+        }
+      }
+      const stats = database.getStats();
+      res.json({ 
+        success: true, 
+        message: `Eşitleme başarılı. ${added} yeni doğrulanmış hasta eklendi.`, 
+        stats 
+      });
+    } else {
+      res.status(404).json({ success: false, message: 'verified_initial_leads.json bulunamadı' });
+    }
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // 4. Canlı Tarama Başlat
 app.post('/api/scan', async (req, res) => {
   try {

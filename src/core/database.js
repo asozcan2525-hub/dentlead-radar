@@ -49,6 +49,9 @@ try {
 
 // Otomatik Başlangıç Verisi Tohumlama (Render / Yeni Sunucu Kurulumu İçin)
 try {
+  // Eski geçersiz forum ve kurgusal verileri temizle
+  db.prepare("DELETE FROM leads WHERE source IN ('gutefrage', 'gutefrage.net')").run();
+
   const countRow = db.prepare("SELECT COUNT(*) as count FROM leads").get();
   if (!countRow || countRow.count === 0) {
     const seedPath = path.join(dataDir, 'verified_initial_leads.json');
