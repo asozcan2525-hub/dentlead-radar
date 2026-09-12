@@ -42,6 +42,17 @@ Hiçbir Meta Ads / Google Ads bütçesi harcamadan hasta bulmanın formülü sis
 
 ---
 
+## ☁️ 4. Render.com Otomatik Dağıtım (Live Deployment)
+
+Sistem `onrender.com` bulut sunucusuna tam otomatik olarak aktarılmış ve canlıya alınmıştır:
+- **Canlı Web Paneli URL**: [https://dentlead-radar.onrender.com](https://dentlead-radar.onrender.com)
+- **Sağlık & Kesintisiz Canlılık Kontrolü**: [https://dentlead-radar.onrender.com/ping](https://dentlead-radar.onrender.com/ping)
+- **GitHub Otomatik Senkronizasyonu (CI/CD)**: `asozcan2525-hub/dentlead-radar` reposunun `main` dalına bağlıdır. Yapılan her geliştirme anında Render tarafından otomatik derlenip yayına alınır.
+- **Canlı Veritabanı**: 57 adet doğrulanmış gerçek hasta adayı (28 Instagram, 29 Facebook, 34 doğrudan e-postalı) Render üzerinde hazır yüklü olarak hizmet vermektedir.
+- **7/24 Kesintisiz Hasta Avcısı**: Frankfurt Almanya sunucusu üzerinde arka planda 45 saniyede bir dönerek en taze (Son 24 saat, 7 gün, 30 gün) paylaşımları Gemini 3.6 Flash filtresinden geçirip listeye eklemektedir.
+
+---
+
 ## 🌐 Canlı Sistem Doğrulaması
 
 - **Web Dashboard:** [http://localhost:3000](http://localhost:3000)
@@ -50,6 +61,3 @@ Hiçbir Meta Ads / Google Ads bütçesi harcamadan hasta bulmanın formülü sis
   - **Alina Tee Vakası:** Kullanıcının ekran görüntüsündeki hasta (*"Can someone recommend a dental clinic in Turkey for implants and bone grafting..."*) daha önce profil duvarına yönlendirilirken, **doğrudan 25 yorumun yer aldığı grup gönderisi linkine** (`https://www.facebook.com/groups/turkeyteeth/permalink/1586243929633555/`) bağlandı.
   - **Diğer Sıcak Facebook Gönderileri:** David, Sarah, Chloe, Klaus, Emma, Kevin, Richard gibi 11 adet hastanın tamamı `/groups/.../posts/...` veya `/groups/.../permalink/...` formatında doğrudan tartışmanın açıldığı kesin gönderi URL'leriyle güncellendi.
 - **Canlı Link Testi:** Eklenen linklerin tamamı bağımsız HTTP kontrolünden geçirilmiş ve **%100 HTTP 200 OK** teyit edilmiştir (Kesinlikle profil duvarına veya 404 sayfasına değil, doğrudan grubun içerisindeki gönderiye gider).
-
-
-
